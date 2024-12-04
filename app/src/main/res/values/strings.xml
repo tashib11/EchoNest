@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">KanectUs</string>
+    <string name="OpenDrawer">open_drawer</string>
+    <string name="CloseDrawer">close_drawer</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="press_the_pencil_icon_to_update">press the pencil icon to update</string>
+    <string name="deleteDescription">
+        When you delete your ConnectUs account, you wont be able to
+        retrieve the content or information you have shared with others
+        and your account will be deleted permanently
+    </string>
+    <string name="Description">
+     ConnectUs app is a social bases app which is used to make
+        communication easy among the users. It makes the relation
+        more strong and brings all together to more close.
+        Whatever this app is in the develop stage, there is a
+        long journey to complete the whole application.
+
+
+    </string>
+</resources>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+ > <!-- Replace with your desired package name -->
+    <queries>
+        <!-- Add the Facebook app's package name -->
+        <package android:name="com.tamim.sociogram" />
+    </queries>
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission
+        android:name="android.permission.CAMERA"
+        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:hardwareAccelerated="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="EchoNest"
+        android:largeHeap="true"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ConnectUs"
+        tools:targetApi="31" >
+        <activity
+            android:name="echonest.sociogram.connectus.SplashScreenActivity"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="echonest.sociogram.connectus.newsDetailActivity"
+            android:exported="false" />
+        <activity
+            android:name="echonest.sociogram.connectus.newsActivity"
+            android:exported="false" />
+        <activity
+            android:name="echonest.sociogram.connectus.aboutActivity"
+            android:exported="false" />
+        <activity
+            android:name="echonest.sociogram.connectus.finallyDeleteAcc"
+            android:exported="false" />
+        <activity
+            android:name="echonest.sociogram.connectus.deleteAccountActivity"
+            android:exported="false" />
+        <activity
+            android:name="echonest.sociogram.connectus.SettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name="echonest.sociogram.connectus.ChatDetailActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" /> <!-- android:theme="@style/Theme.ConnectUs" -->
+        <activity
+            android:name="echonest.sociogram.connectus.SignUpActivity"
+            android:exported="false" />
+        <activity
+            android:name="echonest.sociogram.connectus.MainActivity"
+            android:exported="false" />
+
+        <activity
+            android:name="echonest.sociogram.connectus.SignInActivity"
+            android:exported="false" />
+    </application>
+
+</manifest>
