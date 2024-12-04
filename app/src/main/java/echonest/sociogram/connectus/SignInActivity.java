@@ -123,6 +123,7 @@ public class SignInActivity extends AppCompatActivity {
         builder.create().show();
     }
 
+
     private void beginRecovery(String email) {
         progressDialog.setMessage("Sending email...");
         progressDialog.show();
