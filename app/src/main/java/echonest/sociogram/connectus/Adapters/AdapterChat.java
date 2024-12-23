@@ -2,6 +2,7 @@ package echonest.sociogram.connectus.Adapters;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.util.Log;
@@ -19,6 +20,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+
+import echonest.sociogram.connectus.FullScreenImageActivity;
 import echonest.sociogram.connectus.Models.ModelChat;
 import com.example.connectus.R;
 import com.google.firebase.auth.FirebaseAuth;
@@ -94,11 +97,18 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
         } else if (chatType != null && chatType.equals("image")) {
             holder.messageTv.setVisibility(View.GONE);
             holder.messageVideoView.setVisibility(View.GONE);
-
             holder.messageIv.setVisibility(View.VISIBLE);
+
             Glide.with(context)
                     .load(message)
                     .into(holder.messageIv);
+
+            // Add click listener for full-screen view
+            holder.messageIv.setOnClickListener(v -> {
+                Intent intent = new Intent(context, FullScreenImageActivity.class);
+                intent.putExtra("image_url", message); // Pass image URL to the activity
+                context.startActivity(intent);
+            });
         }  else if (chatType != null && chatType.equals("video")) {
             holder.messageVideoView.setVisibility(View.VISIBLE);
             holder.messageTv.setVisibility(View.GONE);
