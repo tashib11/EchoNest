@@ -15,8 +15,10 @@
     <color name="colorAccent">#0E1515</color>
     <color name="bar">#364146</color>
 
+    <color name="dark_gray">#2E2E2E</color>
+    <color name="light_background">#F5F5F5</color>
 
-    <color name="white">#fff</color>
+    <color name="white">#FFFFFF</color>
     <color name="lightGrey">#EDEDED</color>
     <color name="whatsAppColor">#0E1514</color>
     <color name="red">#9F0B0B</color>
