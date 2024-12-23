@@ -1,15 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="@color/black"
     android:paddingTop="?attr/actionBarSize"
     android:paddingBottom="?attr/actionBarSize"
-    tools:context="echonest.sociogram.connectus.Fragments.PeopleFragment">
+    tools:context="echonest.sociogram.connectus.Fragments.PeopleFragment"
 
-    <!-- TODO: Update blank fragment layout -->
-    <TextView
+    >
+    <!--    android:layout_below="@+id/toolbar"-->
+    <!--    android:layout_above="@+id/bottom_app_bar"-->
+
+
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/usersRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-/>
-</FrameLayout>
+        tools:listitem="@layout/row_chatlist"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+</LinearLayout>
