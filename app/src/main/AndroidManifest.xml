@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
- > <!-- Replace with your desired package name -->
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Replace with your desired package name -->
     <queries>
+
         <!-- Add the Facebook app's package name -->
         <package android:name="com.tamim.sociogram" />
     </queries>
@@ -25,10 +26,13 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ConnectUs"
-        tools:targetApi="31" >
+        tools:targetApi="31">
+        <activity
+            android:name="echonest.sociogram.connectus.FullScreenImageActivity"
+            android:exported="false" />
         <activity
             android:name="echonest.sociogram.connectus.SplashScreenActivity"
-            android:exported="true" >
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -57,16 +61,17 @@
             android:name="echonest.sociogram.connectus.ChatDetailActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" /> <!-- android:theme="@style/Theme.ConnectUs" -->
-        <activity
-            android:name="echonest.sociogram.connectus.SignUpActivity"
-            android:exported="false" />
+
         <activity
             android:name="echonest.sociogram.connectus.MainActivity"
             android:exported="false" />
-
         <activity
             android:name="echonest.sociogram.connectus.SignInActivity"
             android:exported="false" />
+        <activity
+            android:name="echonest.sociogram.connectus.FullScreenImageActivity"
+            android:exported="false"      />
+
     </application>
 
 </manifest>
