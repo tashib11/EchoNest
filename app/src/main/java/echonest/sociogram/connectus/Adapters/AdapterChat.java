@@ -1,8 +1,6 @@
 package echonest.sociogram.connectus.Adapters;
 
-import android.app.MediaRouteButton;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.media.MediaPlayer;
@@ -80,8 +78,8 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull MyHolder holder, int position) {
-        String message = chatList.get(position).getMessage();
-        String timeStamp = chatList.get(position).getTimestamp();
+        ModelChat currentMessage = chatList.get(position);
+        String timeStamp = currentMessage.getTimestamp();
 
         try {
             Calendar cal = Calendar.getInstance(Locale.ENGLISH);
@@ -95,39 +93,60 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
         // Reset visibility for recycled views
         holder.messageTv.setVisibility(View.GONE);
         holder.messageIv.setVisibility(View.GONE);
+        holder.progressBar.setVisibility(View.GONE);
         holder.messageVideoView.setVisibility(View.GONE);
-        holder.progressBar.setVisibility(View.GONE); // Reset ProgressBar visibility
 
-        String chatType = chatList.get(position).getType();
+        String chatType = currentMessage.getType();
 
         if ("text".equals(chatType)) {
+            // Handle text messages
             holder.messageTv.setVisibility(View.VISIBLE);
-            holder.messageTv.setText(message);
+            holder.messageTv.setText(currentMessage.getMessage());
+
         } else if ("image".equals(chatType)) {
             holder.messageIv.setVisibility(View.VISIBLE);
-            holder.progressBar.setVisibility(View.VISIBLE); // Show ProgressBar during loading
 
-            Glide.with(context)
-                    .load(message)
-                    .listener(new RequestListener<Drawable>() {
-                        @Override
-                        public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
-                            holder.progressBar.setVisibility(View.GONE); // Hide ProgressBar on failure
-                            return false;
-                        }
+            // If local image URI is available (before upload)
+            if (currentMessage.getLocalImageUri() != null) {
+                Glide.with(context)
+                        .load(currentMessage.getLocalImageUri()) // Display local image URI
+                        .placeholder(R.drawable.baseline_image_24) // Placeholder image
+                        .into(holder.messageIv);
 
-                        @Override
-                        public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
-                            holder.progressBar.setVisibility(View.GONE); // Hide ProgressBar on success
-                            return false;
-                        }
-                    })
-                    .into(holder.messageIv);
+                // Show progress bar while uploading
+                if (currentMessage.isUploading()) {
+                    holder.progressBar.setVisibility(View.VISIBLE);
+                    holder.progressBar.setProgress(currentMessage.getUploadProgress()); // Set the progress
+                } else {
+                    holder.progressBar.setVisibility(View.GONE);
+                }
+
+            } else if (currentMessage.getMessage() != null) {
+                // Display uploaded image URL from Firebase
+                Glide.with(context)
+                        .load(currentMessage.getMessage()) // Message contains the image URL after upload
+                        .placeholder(R.drawable.baseline_image_24) // Placeholder image
+                        .listener(new RequestListener<Drawable>() {
+                            @Override
+                            public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+                                holder.progressBar.setVisibility(View.GONE); // Hide ProgressBar on failure
+                                return false;
+                            }
+
+                            @Override
+                            public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+                                holder.progressBar.setVisibility(View.GONE); // Hide ProgressBar on success
+                                return false;
+                            }
+                        })
+                        .into(holder.messageIv);
+            }
 
             // Add click listener for full-screen view
             holder.messageIv.setOnClickListener(v -> {
                 Intent intent = new Intent(context, FullScreenImageActivity.class);
-                intent.putExtra("image_url", message); // Pass image URL to the activity
+                String imageUrl = currentMessage.getMessage() != null ? currentMessage.getMessage() : currentMessage.getLocalImageUri();
+                intent.putExtra("image_url", imageUrl); // Pass the image URL or local URI to the activity
                 context.startActivity(intent);
             });
 
@@ -135,7 +154,7 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
             holder.messageVideoView.setVisibility(View.VISIBLE);
             holder.progressBar.setVisibility(View.VISIBLE); // Show ProgressBar during preparation
 
-            Uri videoUri = Uri.parse(message);
+            Uri videoUri = Uri.parse(currentMessage.getMessage()); // Assuming message contains the video URL
             holder.messageVideoView.setVideoURI(videoUri);
             holder.messageVideoView.setOnPreparedListener(mp -> {
                 holder.progressBar.setVisibility(View.GONE); // Hide ProgressBar when ready
@@ -152,36 +171,36 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
             holder.messageVideoView.setOnCompletionListener(mp -> holder.messageVideoView.seekTo(0));
         }
 
+        // Set profile image (sender's image)
         try {
             Picasso.get().load(imageUrl).placeholder(R.drawable.avatar).into(holder.profileIv);
         } catch (Exception e) {
             Picasso.get().load(R.drawable.avatar).into(holder.profileIv);
         }
 
+        // Set seen/delivered status
+        if (position == chatList.size() - 1) {
+            if (currentMessage.isSeen()) {
+                holder.isSeenTv.setText("Seen");
+            } else {
+                holder.isSeenTv.setText("Delivered");
+            }
+        } else {
+            holder.isSeenTv.setVisibility(View.GONE);
+        }
+
+        // Long click listener to delete the message
+        holder.messageTv.setOnLongClickListener(v -> {
+            AlertDialog.Builder builder = new AlertDialog.Builder(context);
+            builder.setTitle("Delete message");
+            builder.setMessage("Remove for you");
+            builder.setPositiveButton("Remove", (dialogInterface, i) -> deleteMessage(position));
+            builder.setNegativeButton("Cancel", (dialogInterface, i) -> dialogInterface.dismiss());
+            builder.create().show();
+            return true;
+        });
 
 
-        holder.messageTv.setOnLongClickListener(new View.OnLongClickListener() {
-    @Override
-    public boolean onLongClick(View view) {
-        AlertDialog.Builder builder= new AlertDialog.Builder(context);
-        builder.setTitle("Delte message");
-        builder.setMessage("Remove for you");
-        builder.setPositiveButton("Remove", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                deleteMessage(position);
-            }
-        });
-        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                dialogInterface.dismiss();
-            }
-        });
-        builder.create().show();
-        return true;
-    }
-});
         // Set seen/delivered status
         if(position==chatList.size()-1) {
             if (chatList.get(position).isSeen()) {

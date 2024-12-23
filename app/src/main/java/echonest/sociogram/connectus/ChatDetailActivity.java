@@ -5,7 +5,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
@@ -39,7 +38,6 @@ import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -308,77 +306,69 @@ public class ChatDetailActivity extends AppCompatActivity {
         // scroll to the bottom of the RecyclerView
         binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
     }
-    private void sendImageMessage(Uri image_rui) throws IOException {
-
+    private void sendImageMessage(Uri imageUri) throws IOException {
         String timeStamp = String.valueOf(System.currentTimeMillis());
-        String fileNameAndPath = "ChatImages" + timeStamp;
+        String fileNameAndPath = "ChatImages/" + timeStamp;
 
-//        Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), image_rui);
-//        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-//        bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
-//        byte[] data = baos.toByteArray();
-        Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), image_rui);
+        // Create Bitmap from URI and compress it
+        Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos); //compress to 70% of original
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos);
         byte[] data = baos.toByteArray();
 
+        // Add a temporary message to the UI with local image URI and uploading state
+        ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "image", false);
+        tempChat.setLocalImageUri(imageUri.toString()); // Store the local image URI
+        tempChat.setUploading(true); // Set the message to uploading
+        tempChat.setUploadProgress(0); // Initialize progress to 0
 
+        chatList.add(tempChat);
+        adapterChat.notifyItemInserted(chatList.size() - 1);
+        binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
+
+        // Firebase Storage reference
         StorageReference ref = FirebaseStorage.getInstance().getReference().child(fileNameAndPath);
-        ref.putBytes(data).addOnSuccessListener(taskSnapshot -> {
+        ref.putBytes(data)
+                .addOnProgressListener(taskSnapshot -> {
+                    // Update the upload progress
+                    int progress = (int) (100 * taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
+                    tempChat.setUploadProgress(progress);
+                    adapterChat.notifyItemChanged(chatList.size() - 1); // Update the progress bar
+                })
+                .addOnSuccessListener(taskSnapshot -> {
+                    Task<Uri> uriTask = taskSnapshot.getStorage().getDownloadUrl();
+                    while (!uriTask.isSuccessful()) ;
 
-            Task<Uri> uriTask = taskSnapshot.getStorage().getDownloadUrl();
-            while (!uriTask.isSuccessful()) ;
-            String downloadUri = uriTask.getResult().toString();
+                    String downloadUri = uriTask.getResult().toString();
+                    if (uriTask.isSuccessful()) {
+                        // Replace temporary message with the actual uploaded image URL
+                        tempChat.setMessage(downloadUri);
+                        tempChat.setUploading(false); // Image upload complete
+                        tempChat.setUploadProgress(100); // Set progress to 100
 
-            if (uriTask.isSuccessful()) {
-                // Image uploaded successfully
-                DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
+                        // Notify the adapter to update the UI
+                        adapterChat.notifyItemChanged(chatList.size() - 1);
 
-                HashMap<String, Object> hashMap = new HashMap<>();
-                hashMap.put("sender", myUid);
-                hashMap.put("receiver", hisUid);
-                hashMap.put("message", downloadUri);
-                hashMap.put("timestamp", timeStamp);
-                hashMap.put("type", "image");
-                hashMap.put("isSeen", false);
-                databaseReference.child("Chats").push().setValue(hashMap);
-
-                // Create the chatlist node/child in Firebase
-                DatabaseReference chatRef1 = FirebaseDatabase.getInstance().getReference("Chatlist").child(myUid).child(hisUid);
-                chatRef1.addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (!snapshot.exists()) {
-                            chatRef1.child("id").setValue(hisUid);
-                        }
+                        // Upload message to Firebase Realtime Database
+                        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
+                        HashMap<String, Object> hashMap = new HashMap<>();
+                        hashMap.put("sender", myUid);
+                        hashMap.put("receiver", hisUid);
+                        hashMap.put("message", downloadUri);
+                        hashMap.put("timestamp", timeStamp);
+                        hashMap.put("type", "image");
+                        hashMap.put("isSeen", false);
+                        databaseReference.child("Chats").push().setValue(hashMap);
                     }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-
-                    }
+                })
+                .addOnFailureListener(e -> {
+                    // Remove the temporary message if the upload fails
+                    chatList.remove(tempChat);
+                    adapterChat.notifyDataSetChanged();
                 });
-
-                DatabaseReference chatRef2 = FirebaseDatabase.getInstance().getReference("Chatlist").child(hisUid).child(myUid);
-                chatRef2.addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (!snapshot.exists()) {
-                            chatRef2.child("id").setValue(myUid);
-                        }
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-
-                    }
-                });
-            }
-        }).addOnFailureListener(e -> {
-
-            // Handle the failure to upload the image here
-        });
     }
+
+
 
     private void sendVideoMessage(Uri videoUri) {
 

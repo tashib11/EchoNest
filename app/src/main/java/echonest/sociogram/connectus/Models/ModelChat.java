@@ -3,10 +3,15 @@ package echonest.sociogram.connectus.Models;
 public class ModelChat {
     String message,receiver,sender,timestamp , type;
     boolean isSeen;
+    // Additional fields for image uploading
+    String localImageUri; // Temporary local URI during upload
+    boolean isUploading; // Indicates if the message is being uploaded
+    int uploadProgress; // Upload progress percentage
 
     public ModelChat() {
     }
 
+    // Constructor for general use
     public ModelChat(String message, String receiver, String sender, String timestamp, String type, boolean isSeen) {
         this.message = message;
         this.receiver = receiver;
@@ -14,6 +19,9 @@ public class ModelChat {
         this.timestamp = timestamp;
         this.type = type;
         this.isSeen = isSeen;
+        this.localImageUri = null;
+        this.isUploading = false;
+        this.uploadProgress = 0;
     }
 
     public String getType() {
@@ -63,4 +71,29 @@ public class ModelChat {
     public void setSeen(boolean seen) {
         isSeen = seen;
     }
+
+    public String getLocalImageUri() {
+        return localImageUri;
+    }
+
+    public void setLocalImageUri(String localImageUri) {
+        this.localImageUri = localImageUri;
+    }
+
+    public boolean isUploading() {
+        return isUploading;
+    }
+
+    public void setUploading(boolean uploading) {
+        isUploading = uploading;
+    }
+
+    public int getUploadProgress() {
+        return uploadProgress;
+    }
+
+    public void setUploadProgress(int uploadProgress) {
+        this.uploadProgress = uploadProgress;
+    }
+
 }
