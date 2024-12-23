@@ -47,10 +47,10 @@ public class PeopleFragment extends Fragment {
                              Bundle savedInstanceState) {
         firebaseAuth= FirebaseAuth.getInstance();
         // Inflate the layout for this fragment
-        View view= inflater.inflate(R.layout.fragment_chats, container, false);
+        View view= inflater.inflate(R.layout.fragment_people, container, false);
         recyclerView= view.findViewById(R.id.usersRecyclerView);
-        recyclerView.setHasFixedSize(true);
-        recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
+//        recyclerView.setHasFixedSize(true);
+//        recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
         //init user list
         userList = new ArrayList<>();
         getAllUsers();

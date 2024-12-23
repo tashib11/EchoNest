@@ -63,7 +63,7 @@ AdapterChatlist adapterChatlist;
 //        userList = new ArrayList<>();
 //        getAllUsers();
         currentUser=FirebaseAuth.getInstance().getCurrentUser();
-        recyclerView = view.findViewById(R.id.usersRecyclerView);
+
         chatlistlist= new ArrayList<>();
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null) {

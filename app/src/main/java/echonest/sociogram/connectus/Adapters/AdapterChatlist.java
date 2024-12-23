@@ -61,6 +61,7 @@ public class AdapterChatlist extends RecyclerView.Adapter<AdapterChatlist.MyHold
         } else {
             holder.lastMessageTv.setText(lastMessage);
         }
+
         try {
             Glide.with(context)
                     .load(userImage)
