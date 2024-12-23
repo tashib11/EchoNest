@@ -106,53 +106,53 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
         } else if ("image".equals(chatType)) {
             holder.messageIv.setVisibility(View.VISIBLE);
 
-            // If local image URI is available (before upload)
             if (currentMessage.getLocalImageUri() != null) {
-                // Apply blur transformation and adjust alpha based on progress
-                Glide.with(context)
-                        .load(currentMessage.getLocalImageUri())
-                        .placeholder(R.drawable.baseline_image_24)
-                        .transform(new jp.wasabeef.glide.transformations.BlurTransformation(25)) // Initial blur
-                        .into(holder.messageIv);
-
-                // Show progress bar while uploading
                 if (currentMessage.isUploading()) {
-                    holder.progressBar.setVisibility(View.VISIBLE);
-                    holder.progressBar.setProgress(currentMessage.getUploadProgress()); // Set the progress
-
-                    // Adjust alpha and blur dynamically based on upload progress
-                    int progress = currentMessage.getUploadProgress();
-                    holder.messageIv.setAlpha(0.3f + (0.7f * progress / 100)); // Gradual transparency
-
+                    // Apply dynamic blur and alpha during upload
                     Glide.with(context)
                             .load(currentMessage.getLocalImageUri())
-                            .placeholder(R.drawable.baseline_image_24)
-                            .transform(new jp.wasabeef.glide.transformations.BlurTransformation(25 - (progress / 4))) // Reduce blur
+                            .transform(new jp.wasabeef.glide.transformations.BlurTransformation(25 - (currentMessage.getUploadProgress() / 4))) // Dynamic blur
                             .into(holder.messageIv);
+
+                    // Show progress bar and update percentage
+                    holder.progressBar.setVisibility(View.VISIBLE);
+                    holder.progressBar.setProgress(currentMessage.getUploadProgress());
+                    holder.progressPercentage.setVisibility(View.VISIBLE);
+                    holder.progressPercentage.setText(currentMessage.getUploadProgress() + "%");
+
+                    holder.messageIv.setAlpha(0.3f + (0.7f * currentMessage.getUploadProgress() / 100));
                 } else {
+                    // Upload completed - show clean image
+                    Glide.with(context)
+                            .load(currentMessage.getMessage()) // Load uploaded URL
+                            .placeholder(R.drawable.baseline_image_24)
+                            .into(holder.messageIv);
+
+                    holder.messageIv.setAlpha(1.0f); // Fully opaque
                     holder.progressBar.setVisibility(View.GONE);
+                    holder.progressPercentage.setVisibility(View.GONE); // Hide percentage
                 }
             } else if (currentMessage.getMessage() != null) {
-                // Display uploaded image URL from Firebase without blur
+                // Display uploaded image
                 Glide.with(context)
                         .load(currentMessage.getMessage())
                         .placeholder(R.drawable.baseline_image_24)
                         .into(holder.messageIv);
-
-                holder.messageIv.setAlpha(1.0f); // Fully opaque after upload
+                holder.messageIv.setAlpha(1.0f); // Fully opaque
+                holder.progressBar.setVisibility(View.GONE);
+                holder.progressPercentage.setVisibility(View.GONE);
             }
 
             // Add click listener for full-screen view
             holder.messageIv.setOnClickListener(v -> {
                 Intent intent = new Intent(context, FullScreenImageActivity.class);
                 String imageUrl = currentMessage.getMessage() != null ? currentMessage.getMessage() : currentMessage.getLocalImageUri();
-                intent.putExtra("image_url", imageUrl); // Pass the image URL or local URI to the activity
+                intent.putExtra("image_url", imageUrl);
                 context.startActivity(intent);
             });
+        }
 
-
-
-    } else if ("video".equals(chatType)) {
+        else if ("video".equals(chatType)) {
             holder.messageVideoView.setVisibility(View.VISIBLE);
             holder.progressBar.setVisibility(View.VISIBLE); // Show ProgressBar during preparation
 
@@ -294,7 +294,7 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
         TextView messageTv, timeTv, isSeenTv;
         LinearLayout messageLayout; // For click listener to show delete
         ProgressBar progressBar;    // Add ProgressBar reference
-
+        TextView progressPercentage;
         public MyHolder(@NonNull View itemView) {
             super(itemView);
             profileIv = itemView.findViewById(R.id.profileIv);
@@ -305,6 +305,7 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
             messageLayout = itemView.findViewById(R.id.messageLayout);
             messageVideoView = itemView.findViewById(R.id.messageVideoView);
             progressBar = itemView.findViewById(R.id.progressBar); // Initialize ProgressBar
+            progressPercentage = itemView.findViewById(R.id.progressPercentage);
         }
     }
 

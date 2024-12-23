@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
+import android.animation.ObjectAnimator;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
@@ -59,8 +60,9 @@ public class ChatDetailActivity extends AppCompatActivity {
     //for checking if user has seen message or not
     ValueEventListener seenListener;
     DatabaseReference userRefForSeen;
-    List<ModelChat> chatList;
     AdapterChat adapterChat;
+    List<ModelChat> chatList;
+
 
     private  static  final  int GALLERY_REQUEST_CODE = 400;
     private static final int VIDEO_REQUEST_CODE = 500;
@@ -82,6 +84,11 @@ public class ChatDetailActivity extends AppCompatActivity {
 // layout for Recycler view
         LinearLayoutManager linearLayoutManager= new LinearLayoutManager(this);
         linearLayoutManager.setStackFromEnd(true);
+
+        //to ensure adapter chat is not null
+        chatList = new ArrayList<>();
+        adapterChat = new AdapterChat(ChatDetailActivity.this, chatList, hisImage);
+        binding.chatRecyclerView.setAdapter(adapterChat);
 
         binding.chatRecyclerView.setHasFixedSize(true);
         binding.chatRecyclerView.setLayoutManager(linearLayoutManager);
@@ -329,33 +336,39 @@ public class ChatDetailActivity extends AppCompatActivity {
         // Firebase Storage reference
         StorageReference ref = FirebaseStorage.getInstance().getReference().child(fileNameAndPath);
         ref.putBytes(data)
-//                .addOnProgressListener(taskSnapshot -> {
-//                    // Update the upload progress
-//                    int progress = (int) (100 * taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
-//                    tempChat.setUploadProgress(progress);
-//                    adapterChat.notifyItemChanged(chatList.size() - 1); // Update the progress bar
-//                })
                 .addOnProgressListener(taskSnapshot -> {
-                    int progress = (int) (100 * taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
-                    tempChat.setUploadProgress(progress);
-                    adapterChat.notifyItemChanged(chatList.size() - 1); // Update the progress bar and blur effect
-                })
+                    long bytesTransferred = taskSnapshot.getBytesTransferred();
+                    long totalByteCount = taskSnapshot.getTotalByteCount();
+                    int progress = (int) (100 * bytesTransferred / totalByteCount);
 
+                    Log.d("UploadProgress", "Bytes transferred: " + bytesTransferred + "/" + totalByteCount + " (" + progress + "%)");
+
+                    // Update the progress in the message
+                    tempChat.setUploadProgress(progress);
+
+                    // Notify the adapter to refresh the UI
+                    int position = chatList.indexOf(tempChat);
+                    if (position != -1) {
+                        adapterChat.notifyItemChanged(position);
+                    }
+                })
                 .addOnSuccessListener(taskSnapshot -> {
                     Task<Uri> uriTask = taskSnapshot.getStorage().getDownloadUrl();
-                    while (!uriTask.isSuccessful()) ;
+                    while (!uriTask.isSuccessful());
 
                     String downloadUri = uriTask.getResult().toString();
                     if (uriTask.isSuccessful()) {
-                        // Replace temporary message with the actual uploaded image URL
+                        // Replace temp message with uploaded URL
                         tempChat.setMessage(downloadUri);
-                        tempChat.setUploading(false); // Image upload complete
-                        tempChat.setUploadProgress(100); // Set progress to 100
+                        tempChat.setUploading(false); // Mark as uploaded
+                        tempChat.setUploadProgress(100); // Final progress
 
-                        // Notify the adapter to update the UI
-                        adapterChat.notifyItemChanged(chatList.size() - 1);
+                        int position = chatList.indexOf(tempChat);
+                        if (position != -1) {
+                            adapterChat.notifyItemChanged(position);
+                        }
 
-                        // Upload message to Firebase Realtime Database
+                        // Save to Firebase Realtime Database
                         DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
                         HashMap<String, Object> hashMap = new HashMap<>();
                         hashMap.put("sender", myUid);
@@ -368,11 +381,14 @@ public class ChatDetailActivity extends AppCompatActivity {
                     }
                 })
                 .addOnFailureListener(e -> {
-                    // Remove the temporary message if the upload fails
+                    // Handle upload failure
                     chatList.remove(tempChat);
                     adapterChat.notifyDataSetChanged();
                 });
+
+
     }
+
 
 
 
