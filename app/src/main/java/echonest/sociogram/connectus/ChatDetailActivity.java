@@ -329,12 +329,18 @@ public class ChatDetailActivity extends AppCompatActivity {
         // Firebase Storage reference
         StorageReference ref = FirebaseStorage.getInstance().getReference().child(fileNameAndPath);
         ref.putBytes(data)
+//                .addOnProgressListener(taskSnapshot -> {
+//                    // Update the upload progress
+//                    int progress = (int) (100 * taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
+//                    tempChat.setUploadProgress(progress);
+//                    adapterChat.notifyItemChanged(chatList.size() - 1); // Update the progress bar
+//                })
                 .addOnProgressListener(taskSnapshot -> {
-                    // Update the upload progress
                     int progress = (int) (100 * taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
                     tempChat.setUploadProgress(progress);
-                    adapterChat.notifyItemChanged(chatList.size() - 1); // Update the progress bar
+                    adapterChat.notifyItemChanged(chatList.size() - 1); // Update the progress bar and blur effect
                 })
+
                 .addOnSuccessListener(taskSnapshot -> {
                     Task<Uri> uriTask = taskSnapshot.getStorage().getDownloadUrl();
                     while (!uriTask.isSuccessful()) ;

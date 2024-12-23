@@ -108,38 +108,38 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
 
             // If local image URI is available (before upload)
             if (currentMessage.getLocalImageUri() != null) {
+                // Apply blur transformation and adjust alpha based on progress
                 Glide.with(context)
-                        .load(currentMessage.getLocalImageUri()) // Display local image URI
-                        .placeholder(R.drawable.baseline_image_24) // Placeholder image
+                        .load(currentMessage.getLocalImageUri())
+                        .placeholder(R.drawable.baseline_image_24)
+                        .transform(new jp.wasabeef.glide.transformations.BlurTransformation(25)) // Initial blur
                         .into(holder.messageIv);
 
                 // Show progress bar while uploading
                 if (currentMessage.isUploading()) {
                     holder.progressBar.setVisibility(View.VISIBLE);
                     holder.progressBar.setProgress(currentMessage.getUploadProgress()); // Set the progress
+
+                    // Adjust alpha and blur dynamically based on upload progress
+                    int progress = currentMessage.getUploadProgress();
+                    holder.messageIv.setAlpha(0.3f + (0.7f * progress / 100)); // Gradual transparency
+
+                    Glide.with(context)
+                            .load(currentMessage.getLocalImageUri())
+                            .placeholder(R.drawable.baseline_image_24)
+                            .transform(new jp.wasabeef.glide.transformations.BlurTransformation(25 - (progress / 4))) // Reduce blur
+                            .into(holder.messageIv);
                 } else {
                     holder.progressBar.setVisibility(View.GONE);
                 }
-
             } else if (currentMessage.getMessage() != null) {
-                // Display uploaded image URL from Firebase
+                // Display uploaded image URL from Firebase without blur
                 Glide.with(context)
-                        .load(currentMessage.getMessage()) // Message contains the image URL after upload
-                        .placeholder(R.drawable.baseline_image_24) // Placeholder image
-                        .listener(new RequestListener<Drawable>() {
-                            @Override
-                            public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
-                                holder.progressBar.setVisibility(View.GONE); // Hide ProgressBar on failure
-                                return false;
-                            }
-
-                            @Override
-                            public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
-                                holder.progressBar.setVisibility(View.GONE); // Hide ProgressBar on success
-                                return false;
-                            }
-                        })
+                        .load(currentMessage.getMessage())
+                        .placeholder(R.drawable.baseline_image_24)
                         .into(holder.messageIv);
+
+                holder.messageIv.setAlpha(1.0f); // Fully opaque after upload
             }
 
             // Add click listener for full-screen view
@@ -150,7 +150,9 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
                 context.startActivity(intent);
             });
 
-        } else if ("video".equals(chatType)) {
+
+
+    } else if ("video".equals(chatType)) {
             holder.messageVideoView.setVisibility(View.VISIBLE);
             holder.progressBar.setVisibility(View.VISIBLE); // Show ProgressBar during preparation
 
