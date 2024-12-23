@@ -1,8 +1,10 @@
 package echonest.sociogram.connectus.Adapters;
 
+import android.app.MediaRouteButton;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.util.Log;
@@ -11,11 +13,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -23,6 +27,11 @@ import com.bumptech.glide.Glide;
 
 import echonest.sociogram.connectus.FullScreenImageActivity;
 import echonest.sociogram.connectus.Models.ModelChat;
+
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.target.Target;
 import com.example.connectus.R;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -68,39 +77,51 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
         
     }
 
+
     @Override
-    public void onBindViewHolder(@NonNull MyHolder holder,int position) {
+    public void onBindViewHolder(@NonNull MyHolder holder, int position) {
         String message = chatList.get(position).getMessage();
         String timeStamp = chatList.get(position).getTimestamp();
 
         try {
-            // Convert timestamp to dd//mm//yyyy hh:mm am/pm
             Calendar cal = Calendar.getInstance(Locale.ENGLISH);
             cal.setTimeInMillis(Long.parseLong(timeStamp));
-
             SimpleDateFormat sdf = new SimpleDateFormat("dd//MM//yyyy hh:mm aa", Locale.ENGLISH);
-            String dateTime = sdf.format(cal.getTime());
-
-            // Set data
-            holder.timeTv.setText(dateTime);
-
+            holder.timeTv.setText(sdf.format(cal.getTime()));
         } catch (NumberFormatException e) {
             Log.e("TimeStamp Error", "Invalid timestamp format", e);
         }
-        String chatType = chatList.get(position).getType();
-        if(chatType != null && chatType.equals("text")){
-            holder.messageTv.setVisibility(View.VISIBLE);
-            holder.messageIv.setVisibility(View.GONE);
-            holder.messageVideoView.setVisibility(View.GONE);
 
+        // Reset visibility for recycled views
+        holder.messageTv.setVisibility(View.GONE);
+        holder.messageIv.setVisibility(View.GONE);
+        holder.messageVideoView.setVisibility(View.GONE);
+        holder.progressBar.setVisibility(View.GONE); // Reset ProgressBar visibility
+
+        String chatType = chatList.get(position).getType();
+
+        if ("text".equals(chatType)) {
+            holder.messageTv.setVisibility(View.VISIBLE);
             holder.messageTv.setText(message);
-        } else if (chatType != null && chatType.equals("image")) {
-            holder.messageTv.setVisibility(View.GONE);
-            holder.messageVideoView.setVisibility(View.GONE);
+        } else if ("image".equals(chatType)) {
             holder.messageIv.setVisibility(View.VISIBLE);
+            holder.progressBar.setVisibility(View.VISIBLE); // Show ProgressBar during loading
 
             Glide.with(context)
                     .load(message)
+                    .listener(new RequestListener<Drawable>() {
+                        @Override
+                        public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+                            holder.progressBar.setVisibility(View.GONE); // Hide ProgressBar on failure
+                            return false;
+                        }
+
+                        @Override
+                        public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+                            holder.progressBar.setVisibility(View.GONE); // Hide ProgressBar on success
+                            return false;
+                        }
+                    })
                     .into(holder.messageIv);
 
             // Add click listener for full-screen view
@@ -109,66 +130,34 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
                 intent.putExtra("image_url", message); // Pass image URL to the activity
                 context.startActivity(intent);
             });
-        }  else if (chatType != null && chatType.equals("video")) {
-            holder.messageVideoView.setVisibility(View.VISIBLE);
-            holder.messageTv.setVisibility(View.GONE);
 
-            holder.messageIv.setVisibility(View.GONE);
+        } else if ("video".equals(chatType)) {
+            holder.messageVideoView.setVisibility(View.VISIBLE);
+            holder.progressBar.setVisibility(View.VISIBLE); // Show ProgressBar during preparation
+
             Uri videoUri = Uri.parse(message);
             holder.messageVideoView.setVideoURI(videoUri);
-            holder.messageVideoView.requestFocus();
-            if (currentlyPlayingVideo != null && currentlyPlayingVideo != holder.messageVideoView) {
-                currentlyPlayingVideo.stopPlayback();
-            }
-
             holder.messageVideoView.setOnPreparedListener(mp -> {
+                holder.progressBar.setVisibility(View.GONE); // Hide ProgressBar when ready
                 holder.messageVideoView.start();
-                currentlyPlayingVideo = holder.messageVideoView;
             });
-            holder.messageVideoView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (holder.messageVideoView.isPlaying()) {
-                        holder.messageVideoView.pause();
-                        if (currentlyPlayingVideo == holder.messageVideoView) {
-                            currentlyPlayingVideo = null;
-                        }
-                    } else if (holder.messageVideoView.getCurrentPosition() == holder.messageVideoView.getDuration()) {
-                        // If the video has ended, reset to the start and play
-                        holder.messageVideoView.seekTo(0);
-                        holder.messageVideoView.start();
-                        currentlyPlayingVideo = holder.messageVideoView;
-                    } else {
-                        // If the video is paused, start playing from the current position
-                        if (currentlyPlayingVideo != null) {
-                            currentlyPlayingVideo.pause();
-                        }
-                        holder.messageVideoView.start();
-                        currentlyPlayingVideo = holder.messageVideoView;
-                    }
+            holder.messageVideoView.setOnInfoListener((mp, what, extra) -> {
+                if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) {
+                    holder.progressBar.setVisibility(View.VISIBLE);
+                } else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END) {
+                    holder.progressBar.setVisibility(View.GONE);
                 }
+                return false;
             });
-
-
-            holder.messageVideoView.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                @Override
-                public void onCompletion(MediaPlayer mp) {
-                    if (holder.messageVideoView == currentlyPlayingVideo) {
-                        currentlyPlayingVideo = null;
-                    }
-                    holder.messageVideoView.seekTo(0); // Reset video to start
-                    holder.messageVideoView.setVideoURI(videoUri); // Prepare the video again
-                    holder.messageVideoView.requestFocus();
-                }
-            });
-
-
+            holder.messageVideoView.setOnCompletionListener(mp -> holder.messageVideoView.seekTo(0));
         }
-        try{
+
+        try {
             Picasso.get().load(imageUrl).placeholder(R.drawable.avatar).into(holder.profileIv);
-        }catch (Exception e){
+        } catch (Exception e) {
             Picasso.get().load(R.drawable.avatar).into(holder.profileIv);
         }
+
 
 
         holder.messageTv.setOnLongClickListener(new View.OnLongClickListener() {
@@ -278,21 +267,25 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
         }
     }
 
-    static class MyHolder extends RecyclerView.ViewHolder{
+    static class MyHolder extends RecyclerView.ViewHolder {
         VideoView messageVideoView;
-        ImageView profileIv,messageIv;
+        ImageView profileIv, messageIv;
         TextView messageTv, timeTv, isSeenTv;
-        LinearLayout messageLayout;//for click listeneter to show delete
+        LinearLayout messageLayout; // For click listener to show delete
+        ProgressBar progressBar;    // Add ProgressBar reference
+
         public MyHolder(@NonNull View itemView) {
             super(itemView);
-            profileIv=itemView.findViewById(R.id.profileIv);
-            messageIv=itemView.findViewById(R.id.messageIvImage);
-            messageTv=itemView.findViewById(R.id.messageTv);
-            timeTv=itemView.findViewById(R.id.timeTv);
-            isSeenTv=itemView.findViewById(R.id.isSeenTv);
-            messageLayout=itemView.findViewById(R.id.messageLayout);
+            profileIv = itemView.findViewById(R.id.profileIv);
+            messageIv = itemView.findViewById(R.id.messageIvImage);
+            messageTv = itemView.findViewById(R.id.messageTv);
+            timeTv = itemView.findViewById(R.id.timeTv);
+            isSeenTv = itemView.findViewById(R.id.isSeenTv);
+            messageLayout = itemView.findViewById(R.id.messageLayout);
             messageVideoView = itemView.findViewById(R.id.messageVideoView);
+            progressBar = itemView.findViewById(R.id.progressBar); // Initialize ProgressBar
         }
     }
+
 
 }
