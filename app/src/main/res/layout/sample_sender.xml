@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-android:layout_gravity="end"
+    android:layout_gravity="end"
     android:layout_marginStart="15dp"
     android:layout_marginTop="4dp"
     android:maxWidth="310dp"
@@ -14,7 +14,7 @@ android:layout_gravity="end"
 
     <LinearLayout
 
-android:layout_gravity="end"
+        android:layout_gravity="end"
         android:layout_width="wrap_content"
         android:layout_height="match_parent">
 
@@ -35,13 +35,14 @@ android:layout_gravity="end"
             android:textColor="@color/bar"
             android:textSize="12sp" />
         <TextView
+
             android:id="@+id/messageTv"
             android:background="@drawable/bg_sender"
             android:layout_weight="1"
             android:textSize="16sp"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="30dp"
+            android:layout_marginEnd="2dp"
             android:layout_marginStart="5dp"
             android:padding="8dp"
             android:layout_marginTop="4dp"
@@ -53,19 +54,19 @@ android:layout_gravity="end"
             android:textColor="@color/black"
 
 
-     />
+            />
+
 
         <ImageView
             android:id="@+id/messageIvImage"
             android:layout_width="300dp"
             android:layout_height="300dp"
             android:layout_marginTop="4dp"
+            android:layout_marginEnd="10dp"
             android:layout_marginBottom="3dp"
-            android:src="@drawable/ic_image_black"
-android:layout_marginEnd="10dp"
             android:padding="1dp"
-            android:scaleType="fitCenter" />
-
+            android:scaleType="fitCenter"
+            android:src="@drawable/baseline_image_24" />
 
         <VideoView
             android:id="@+id/messageVideoView"
@@ -89,7 +90,7 @@ android:layout_marginEnd="10dp"
         android:textAlignment="textEnd"
         android:text="seen"
         android:textColor="@color/black"
-     />
+        />
 
 
 </LinearLayout>
