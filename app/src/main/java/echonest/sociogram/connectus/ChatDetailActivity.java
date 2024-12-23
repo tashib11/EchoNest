@@ -309,9 +309,7 @@ public class ChatDetailActivity extends AppCompatActivity {
         binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
     }
     private void sendImageMessage(Uri image_rui) throws IOException {
-        ProgressDialog progressDialog = new ProgressDialog(this);
-        progressDialog.setMessage("Sending image...");
-        progressDialog.show();
+
         String timeStamp = String.valueOf(System.currentTimeMillis());
         String fileNameAndPath = "ChatImages" + timeStamp;
 
@@ -327,7 +325,7 @@ public class ChatDetailActivity extends AppCompatActivity {
 
         StorageReference ref = FirebaseStorage.getInstance().getReference().child(fileNameAndPath);
         ref.putBytes(data).addOnSuccessListener(taskSnapshot -> {
-            progressDialog.dismiss();
+
             Task<Uri> uriTask = taskSnapshot.getStorage().getDownloadUrl();
             while (!uriTask.isSuccessful()) ;
             String downloadUri = uriTask.getResult().toString();
@@ -377,21 +375,19 @@ public class ChatDetailActivity extends AppCompatActivity {
                 });
             }
         }).addOnFailureListener(e -> {
-            progressDialog.dismiss();
+
             // Handle the failure to upload the image here
         });
     }
 
     private void sendVideoMessage(Uri videoUri) {
-        ProgressDialog progressDialog = new ProgressDialog(this);
-        progressDialog.setMessage("Sending video...");
-        progressDialog.show();
+
         String timeStamp = String.valueOf(System.currentTimeMillis());
         String fileNameAndPath = "ChatVideos" + timeStamp;
 
         StorageReference ref = FirebaseStorage.getInstance().getReference().child(fileNameAndPath);
         ref.putFile(videoUri).addOnSuccessListener(taskSnapshot -> {
-            progressDialog.dismiss();
+
             Task<Uri> uriTask = taskSnapshot.getStorage().getDownloadUrl();
             while (!uriTask.isSuccessful()) ;
             String downloadUri = uriTask.getResult().toString();
@@ -441,7 +437,7 @@ public class ChatDetailActivity extends AppCompatActivity {
                 });
             }
         }).addOnFailureListener(e -> {
-            progressDialog.dismiss();
+
             // Handle the failure to upload the video here
         });
     }
