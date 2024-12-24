@@ -73,7 +73,7 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
             View view= LayoutInflater.from(context).inflate(R.layout.sample_sender,parent,false);
             return new MyHolder(view);
         }
-        
+
     }
 
 
@@ -266,7 +266,7 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
     public int getItemCount() {
         return chatList.size();
     }
-    
+
     public int getItemViewType(int position){
         fUser= FirebaseAuth.getInstance().getCurrentUser();
         if(chatList.get(position).getSender().equals(fUser.getUid())){

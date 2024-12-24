@@ -1,13 +1,16 @@
 package echonest.sociogram.connectus.Models;
 
 public class ModelChat {
-    String message,receiver,sender,timestamp , type;
+    String message, receiver, sender, timestamp, type;
     boolean isSeen;
-    // Additional fields for image uploading
+
+    // Additional fields for image and video uploading
     String localImageUri; // Temporary local URI during upload
     boolean isUploading; // Indicates if the message is being uploaded
     int uploadProgress; // Upload progress percentage
+    String thumbnailUri; // URI for video thumbnail during upload
 
+    // Default constructor
     public ModelChat() {
     }
 
@@ -22,16 +25,10 @@ public class ModelChat {
         this.localImageUri = null;
         this.isUploading = false;
         this.uploadProgress = 0;
+        this.thumbnailUri = null;
     }
 
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
+    // Getter and Setter for message
     public String getMessage() {
         return message;
     }
@@ -40,6 +37,7 @@ public class ModelChat {
         this.message = message;
     }
 
+    // Getter and Setter for receiver
     public String getReceiver() {
         return receiver;
     }
@@ -48,6 +46,7 @@ public class ModelChat {
         this.receiver = receiver;
     }
 
+    // Getter and Setter for sender
     public String getSender() {
         return sender;
     }
@@ -56,6 +55,7 @@ public class ModelChat {
         this.sender = sender;
     }
 
+    // Getter and Setter for timestamp
     public String getTimestamp() {
         return timestamp;
     }
@@ -64,6 +64,16 @@ public class ModelChat {
         this.timestamp = timestamp;
     }
 
+    // Getter and Setter for type
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    // Getter and Setter for isSeen
     public boolean isSeen() {
         return isSeen;
     }
@@ -72,6 +82,7 @@ public class ModelChat {
         isSeen = seen;
     }
 
+    // Getter and Setter for localImageUri
     public String getLocalImageUri() {
         return localImageUri;
     }
@@ -80,6 +91,7 @@ public class ModelChat {
         this.localImageUri = localImageUri;
     }
 
+    // Getter and Setter for isUploading
     public boolean isUploading() {
         return isUploading;
     }
@@ -88,6 +100,7 @@ public class ModelChat {
         isUploading = uploading;
     }
 
+    // Getter and Setter for uploadProgress
     public int getUploadProgress() {
         return uploadProgress;
     }
@@ -96,4 +109,12 @@ public class ModelChat {
         this.uploadProgress = uploadProgress;
     }
 
+    // Getter and Setter for thumbnailUri
+    public String getThumbnailUri() {
+        return thumbnailUri;
+    }
+
+    public void setThumbnailUri(String thumbnailUri) {
+        this.thumbnailUri = thumbnailUri;
+    }
 }

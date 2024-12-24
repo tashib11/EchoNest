@@ -177,7 +177,7 @@ public class ChatDetailActivity extends AppCompatActivity {
                                     .into(binding.profileIv);
                         }
                     }}
-                }
+            }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
