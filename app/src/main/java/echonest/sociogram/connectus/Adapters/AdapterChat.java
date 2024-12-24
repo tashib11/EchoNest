@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 
 import echonest.sociogram.connectus.FullScreenImageActivity;
+import echonest.sociogram.connectus.FullScreenVideoActivity;
 import echonest.sociogram.connectus.Models.ModelChat;
 
 import com.bumptech.glide.load.DataSource;
@@ -153,25 +154,34 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
         }
 
         else if ("video".equals(chatType)) {
-            holder.messageVideoView.setVisibility(View.VISIBLE);
-            holder.progressBar.setVisibility(View.VISIBLE); // Show ProgressBar during preparation
+            if (holder.messageIv != null) {
+                holder.messageIv.setVisibility(View.VISIBLE); // Show video thumbnail
+            }
+            if (holder.playIcon != null) {
+                holder.playIcon.setVisibility(View.VISIBLE); // Ensure play icon is visible
+            }
+            if (holder.videoProgressBar != null) {
+                holder.videoProgressBar.setVisibility(View.GONE); // Hide progress bar by default
+            }
 
             Uri videoUri = Uri.parse(currentMessage.getMessage()); // Assuming message contains the video URL
-            holder.messageVideoView.setVideoURI(videoUri);
-            holder.messageVideoView.setOnPreparedListener(mp -> {
-                holder.progressBar.setVisibility(View.GONE); // Hide ProgressBar when ready
-                holder.messageVideoView.start();
-            });
-            holder.messageVideoView.setOnInfoListener((mp, what, extra) -> {
-                if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) {
-                    holder.progressBar.setVisibility(View.VISIBLE);
-                } else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END) {
-                    holder.progressBar.setVisibility(View.GONE);
-                }
-                return false;
-            });
-            holder.messageVideoView.setOnCompletionListener(mp -> holder.messageVideoView.seekTo(0));
+
+            // Generate and load a video thumbnail with Glide
+            Glide.with(context)
+                    .load(videoUri) // Load video URI to generate thumbnail
+                    .placeholder(R.drawable.baseline_image_24) // Placeholder image
+                    .into(holder.messageIv);
+
+            // Set OnClickListener for playing video in fullscreen
+            if (holder.messageIv != null) {
+                holder.messageIv.setOnClickListener(v -> {
+                    Intent intent = new Intent(context, FullScreenVideoActivity.class);
+                    intent.putExtra("video_url", currentMessage.getMessage());
+                    context.startActivity(intent);
+                });
+            }
         }
+
 
         // Set profile image (sender's image)
         try {
@@ -268,7 +278,7 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
     @Override
     public void onViewAttachedToWindow(@NonNull MyHolder holder) {
         super.onViewAttachedToWindow(holder);
-        if (holder.messageVideoView.isPlaying()) {
+        if (holder.messageVideoView != null && holder.messageVideoView.isPlaying()) {
             holder.messageVideoView.start();
         }
         if (currentlyPlayingVideo != null && currentlyPlayingVideo != holder.messageVideoView) {
@@ -280,7 +290,7 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
     @Override
     public void onViewDetachedFromWindow(@NonNull MyHolder holder) {
         super.onViewDetachedFromWindow(holder);
-        if (holder.messageVideoView.isPlaying()) {
+        if (holder.messageVideoView != null && holder.messageVideoView.isPlaying()) {
             holder.messageVideoView.pause();
         }
         if (currentlyPlayingVideo == holder.messageVideoView) {
@@ -288,12 +298,13 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
         }
     }
 
+
     static class MyHolder extends RecyclerView.ViewHolder {
         VideoView messageVideoView;
-        ImageView profileIv, messageIv;
+        ImageView profileIv, messageIv, playIcon;
         TextView messageTv, timeTv, isSeenTv;
         LinearLayout messageLayout; // For click listener to show delete
-        ProgressBar progressBar;    // Add ProgressBar reference
+        ProgressBar progressBar, videoProgressBar;    // Add ProgressBar reference
         TextView progressPercentage;
         public MyHolder(@NonNull View itemView) {
             super(itemView);
@@ -305,7 +316,10 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
             messageLayout = itemView.findViewById(R.id.messageLayout);
             messageVideoView = itemView.findViewById(R.id.messageVideoView);
             progressBar = itemView.findViewById(R.id.progressBar); // Initialize ProgressBar
+            videoProgressBar = itemView.findViewById(R.id.videoProgressBar); // Initialize ProgressBar
+
             progressPercentage = itemView.findViewById(R.id.progressPercentage);
+            playIcon = itemView.findViewById(R.id.playIcon);
         }
     }
 
