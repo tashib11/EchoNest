@@ -21,6 +21,8 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 
 import com.bumptech.glide.Glide;
@@ -393,7 +395,6 @@ public class ChatDetailActivity extends AppCompatActivity {
 
 
     private void sendVideoMessage(Uri videoUri) {
-
         String timeStamp = String.valueOf(System.currentTimeMillis());
         String fileNameAndPath = "ChatVideos" + timeStamp;
 
@@ -447,9 +448,19 @@ public class ChatDetailActivity extends AppCompatActivity {
 
                     }
                 });
+
+                // Show the play icon and hide the progress bar once the video upload is successful
+                // Show the play icon and hide the progress bar once the video upload is successful
+                runOnUiThread(() -> {
+                    ImageView playIcon = findViewById(R.id.playIcon);
+                    playIcon.setVisibility(View.VISIBLE);  // Show play icon
+
+                    ProgressBar progressBar = findViewById(R.id.videoProgressBar);
+                    progressBar.setVisibility(View.GONE);  // Hide progress bar once video is uploaded
+                });
+
             }
         }).addOnFailureListener(e -> {
-
             // Handle the failure to upload the video here
         });
     }
