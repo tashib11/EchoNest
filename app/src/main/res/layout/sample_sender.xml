@@ -6,31 +6,33 @@
     android:orientation="vertical"
     android:layout_gravity="end"
     android:layout_marginStart="15dp"
-    android:layout_marginEnd="0dp"
+    android:layout_marginEnd="10dp"
     android:layout_marginTop="10dp"
     android:layout_marginBottom="7dp"
     android:maxWidth="310dp"
-    android:maxHeight="400dp"
     android:id="@+id/messageLayout">
 
     <!-- Message Container -->
     <LinearLayout
         android:layout_gravity="end"
         android:layout_width="wrap_content"
-        android:layout_height="match_parent">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
 
         <de.hdodenhof.circleimageview.CircleImageView
             android:id="@+id/profileIv"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            app:civ_border_color="@null"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:visibility="gone"
-            android:src="@drawable/avatar" />
+            android:src="@drawable/avatar"
+            app:civ_border_color="@null" />
 
         <TextView
             android:id="@+id/timeTv"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             android:layout_marginTop="3dp"
             android:text="time"
             android:textColor="@color/green_light"
@@ -39,39 +41,33 @@
         <TextView
             android:id="@+id/messageTv"
             android:background="@drawable/bg_sender"
-            android:layout_weight="1"
-            android:textSize="16sp"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="2dp"
-            android:layout_marginStart="5dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="5dp"
             android:padding="8dp"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="3dp"
-            android:inputType="textLongMessage|textMultiLine"
-            android:maxWidth="270dp"
+            android:text="Sample Message"
+            android:textColor="@color/black"
+            android:textSize="16sp"
+            android:maxWidth="250dp"
             android:minWidth="50dp"
-            android:text="text"
-            android:textColor="@color/black" />
+            android:visibility="gone" />
     </LinearLayout>
 
     <!-- Image Container -->
     <FrameLayout
         android:layout_gravity="end"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp">
 
         <ImageView
             android:id="@+id/messageIvImage"
-            android:layout_width="300dp"
-            android:layout_height="300dp"
-            android:layout_marginTop="4dp"
-            android:layout_marginEnd="0dp"
-            android:layout_marginBottom="3dp"
-            android:padding="1dp"
-            android:scaleType="centerCrop"
-            android:src="@drawable/baseline_image_24" />
-
+            android:layout_width="250dp"
+            android:layout_height="250dp"
+            android:contentDescription="Image message"
+            android:src="@drawable/baseline_image_24"
+            android:scaleType="centerCrop" />
 
         <ProgressBar
             android:id="@+id/progressBar"
@@ -97,17 +93,16 @@
     <FrameLayout
         android:layout_gravity="end"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp">
 
         <VideoView
             android:id="@+id/messageVideoView"
-            android:layout_width="300dp"
-            android:layout_height="300dp"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="3dp"
-            android:src="@drawable/videosend"
-            android:padding="0dp"
-            android:scaleType="centerCrop" />
+            android:layout_width="250dp"
+            android:layout_height="250dp"
+            android:contentDescription="Video message"
+            android:layout_gravity="center"
+            android:visibility="gone" />
 
         <ProgressBar
             android:id="@+id/videoProgressBar"
@@ -115,8 +110,6 @@
             android:layout_height="40dp"
             android:layout_gravity="center"
             android:visibility="gone" />
-
-
     </FrameLayout>
 
     <!-- Seen Status -->
@@ -125,7 +118,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="end"
-        android:textAlignment="textEnd"
-        android:text="seen"
-        android:textColor="@color/black" />
+        android:text="Seen"
+        android:textColor="@color/black"
+        android:textSize="12sp"
+        android:layout_marginTop="5dp" />
 </LinearLayout>
