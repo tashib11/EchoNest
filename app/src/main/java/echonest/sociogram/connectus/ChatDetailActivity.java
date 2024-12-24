@@ -24,6 +24,7 @@ import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import echonest.sociogram.connectus.Adapters.AdapterChat;
@@ -396,74 +397,67 @@ public class ChatDetailActivity extends AppCompatActivity {
 
     private void sendVideoMessage(Uri videoUri) {
         String timeStamp = String.valueOf(System.currentTimeMillis());
-        String fileNameAndPath = "ChatVideos" + timeStamp;
+        String fileNameAndPath = "ChatVideos/" + timeStamp; // Ensure proper folder separation
 
+        // Upload video to Firebase Storage
         StorageReference ref = FirebaseStorage.getInstance().getReference().child(fileNameAndPath);
-        ref.putFile(videoUri).addOnSuccessListener(taskSnapshot -> {
+        ref.putFile(videoUri)
+                .addOnSuccessListener(taskSnapshot -> {
+                    // Get the download URL of the uploaded video
+                    Task<Uri> uriTask = taskSnapshot.getStorage().getDownloadUrl();
+                    while (!uriTask.isSuccessful()) ;
 
-            Task<Uri> uriTask = taskSnapshot.getStorage().getDownloadUrl();
-            while (!uriTask.isSuccessful()) ;
-            String downloadUri = uriTask.getResult().toString();
+                    String downloadUri = uriTask.getResult().toString();
+                    if (uriTask.isSuccessful()) {
+                        // Video uploaded successfully, save message info to Firebase Database
+                        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
 
-            if (uriTask.isSuccessful()) {
-                // Video uploaded successfully
-                DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
+                        HashMap<String, Object> hashMap = new HashMap<>();
+                        hashMap.put("sender", myUid);
+                        hashMap.put("receiver", hisUid);
+                        hashMap.put("message", downloadUri);
+                        hashMap.put("timestamp", timeStamp);
+                        hashMap.put("type", "video");
+                        hashMap.put("isSeen", false);
 
-                HashMap<String, Object> hashMap = new HashMap<>();
-                hashMap.put("sender", myUid);
-                hashMap.put("receiver", hisUid);
-                hashMap.put("message", downloadUri);
-                hashMap.put("timestamp", timeStamp);
-                hashMap.put("type", "video");
-                hashMap.put("isSeen", false);
-                databaseReference.child("Chats").push().setValue(hashMap);
+                        // Push chat message
+                        databaseReference.child("Chats").push().setValue(hashMap);
 
-                // Create the chatlist node/child in Firebase
-                DatabaseReference chatRef1 = FirebaseDatabase.getInstance().getReference("Chatlist").child(myUid).child(hisUid);
-                chatRef1.addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (!snapshot.exists()) {
-                            chatRef1.child("id").setValue(hisUid);
-                        }
+                        // Update Chatlist for both sender and receiver
+                        updateChatList(myUid, hisUid);
+                        updateChatList(hisUid, myUid);
+
+                        // Optional: Provide success feedback to the user
+                        Toast.makeText(this, "Video sent successfully!", Toast.LENGTH_SHORT).show();
                     }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-
-                    }
+                })
+                .addOnFailureListener(e -> {
+                    // Handle upload failure
+                    Toast.makeText(this, "Failed to send video: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+    }
 
-                DatabaseReference chatRef2 = FirebaseDatabase.getInstance().getReference("Chatlist").child(hisUid).child(myUid);
-                chatRef2.addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (!snapshot.exists()) {
-                            chatRef2.child("id").setValue(myUid);
-                        }
-                    }
+    private void updateChatList(String senderId, String receiverId) {
+        DatabaseReference chatRef = FirebaseDatabase.getInstance()
+                .getReference("Chatlist")
+                .child(senderId)
+                .child(receiverId);
 
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-
-                    }
-                });
-
-                // Show the play icon and hide the progress bar once the video upload is successful
-                // Show the play icon and hide the progress bar once the video upload is successful
-                runOnUiThread(() -> {
-                    ImageView playIcon = findViewById(R.id.playIcon);
-                    playIcon.setVisibility(View.VISIBLE);  // Show play icon
-
-                    ProgressBar progressBar = findViewById(R.id.videoProgressBar);
-                    progressBar.setVisibility(View.GONE);  // Hide progress bar once video is uploaded
-                });
-
+        chatRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (!snapshot.exists()) {
+                    chatRef.child("id").setValue(receiverId);
+                }
             }
-        }).addOnFailureListener(e -> {
-            // Handle the failure to upload the video here
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e("ChatListUpdate", "Failed to update chat list: " + error.getMessage());
+            }
         });
     }
+
 
 
 

@@ -154,33 +154,28 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
         }
 
         else if ("video".equals(chatType)) {
-            if (holder.messageIv != null) {
-                holder.messageIv.setVisibility(View.VISIBLE); // Show video thumbnail
-            }
-            if (holder.playIcon != null) {
-                holder.playIcon.setVisibility(View.VISIBLE); // Ensure play icon is visible
-            }
-            if (holder.videoProgressBar != null) {
-                holder.videoProgressBar.setVisibility(View.GONE); // Hide progress bar by default
-            }
+            // Show the video thumbnail
+            holder.messageIv.setVisibility(View.VISIBLE);
+            holder.playIcon.setVisibility(View.VISIBLE); // Ensure play icon is visible
+            holder.videoProgressBar.setVisibility(View.GONE); // Hide progress bar by default
 
+            // Parse the video URI
             Uri videoUri = Uri.parse(currentMessage.getMessage()); // Assuming message contains the video URL
 
-            // Generate and load a video thumbnail with Glide
+            // Load and display the video thumbnail using Glide
             Glide.with(context)
-                    .load(videoUri) // Load video URI to generate thumbnail
-                    .placeholder(R.drawable.baseline_image_24) // Placeholder image
+                    .load(videoUri) // This assumes the thumbnail can be derived from the video URL
+                    .placeholder(R.drawable.baseline_image_24) // Placeholder while loading
                     .into(holder.messageIv);
 
-            // Set OnClickListener for playing video in fullscreen
-            if (holder.messageIv != null) {
-                holder.messageIv.setOnClickListener(v -> {
-                    Intent intent = new Intent(context, FullScreenVideoActivity.class);
-                    intent.putExtra("video_url", currentMessage.getMessage());
-                    context.startActivity(intent);
-                });
-            }
+            // Set OnClickListener to play the video in full-screen mode
+            holder.messageIv.setOnClickListener(v -> {
+                Intent intent = new Intent(context, FullScreenVideoActivity.class);
+                intent.putExtra("video_url", currentMessage.getMessage());
+                context.startActivity(intent);
+            });
         }
+
 
 
         // Set profile image (sender's image)
