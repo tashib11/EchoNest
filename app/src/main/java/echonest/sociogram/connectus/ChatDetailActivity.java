@@ -270,55 +270,26 @@ public class ChatDetailActivity extends AppCompatActivity {
     }
 
     private void sendMessage(String message) {
-        DatabaseReference databaseReference=FirebaseDatabase.getInstance().getReference();
+        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
+        String timestamp = String.valueOf(System.currentTimeMillis());
 
-        String timestamp= String.valueOf(System.currentTimeMillis());
-        HashMap<String,Object> hashMap= new HashMap<>();
-        hashMap.put("sender", myUid);
-        hashMap.put("receiver", hisUid);
-        hashMap.put("message", message);
-        hashMap.put("timestamp", timestamp);
-        hashMap.put("isSeen", false);
-        hashMap.put("type","text");
+        HashMap<String, Object> messageMap = new HashMap<>();
+        messageMap.put("sender", myUid);
+        messageMap.put("receiver", hisUid);
+        messageMap.put("message", message);
+        messageMap.put("timestamp", timestamp);
+        messageMap.put("isSeen", false);
+        messageMap.put("type", "text");
 
-        databaseReference.child("Chats").push().setValue(hashMap);
-        //reset edittext after sendiung message
-        binding.messageEt.setText("");
+        HashMap<String, Object> updates = new HashMap<>();
+        String messageKey = databaseReference.child("Chats").push().getKey();
+        updates.put("Chats/" + messageKey, messageMap);
+        updates.put("Chatlist/" + myUid + "/" + hisUid + "/id", hisUid);
+        updates.put("Chatlist/" + hisUid + "/" + myUid + "/id", myUid);
 
-        // create chatlist node/child in firebase
-        DatabaseReference chatRef1= FirebaseDatabase.getInstance().getReference("Chatlist").child(myUid).child(hisUid);
-        chatRef1.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if(!snapshot.exists()){
-                    chatRef1.child("id").setValue(hisUid);
-                }
-            }
+        databaseReference.updateChildren(updates);
+        binding.messageEt.setText(""); // Reset input
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
-        });
-
-        DatabaseReference chatRef2= FirebaseDatabase.getInstance().getReference("Chatlist").child(hisUid).child(myUid);
-
-        chatRef2.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if(!snapshot.exists()){
-                    chatRef2.child("id").setValue(myUid);
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
-        });
-
-        // scroll to the bottom of the RecyclerView
-        binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
     }
     private void sendImageMessage(Uri imageUri) {
         String timeStamp = String.valueOf(System.currentTimeMillis());
