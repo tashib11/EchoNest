@@ -96,6 +96,45 @@ public class ChatDetailActivity extends AppCompatActivity {
 // layout for Recycler view
         LinearLayoutManager linearLayoutManager= new LinearLayoutManager(this);
         linearLayoutManager.setStackFromEnd(true);
+        //to ensure adapter chat is not null
+        chatList = new ArrayList<>();
+        adapterChat = new AdapterChat(ChatDetailActivity.this, chatList, hisImage);
+        binding.chatRecyclerView.setAdapter(adapterChat);
+
+        binding.chatRecyclerView.setHasFixedSize(true);
+        binding.chatRecyclerView.setLayoutManager(linearLayoutManager);
+
+        // Post animation to smoothly scroll to the new message
+        binding.chatRecyclerView.setItemAnimator(new CustomItemAnimator());
+
+
+
+
+
+        binding.getRoot().getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                Rect r = new Rect();
+                binding.getRoot().getWindowVisibleDisplayFrame(r);
+                int screenHeight = binding.getRoot().getRootView().getHeight();
+                int keypadHeight = screenHeight - r.bottom;
+
+                if (keypadHeight > screenHeight * 0.15) { // 0.15 ratio is perhaps enough to determine keypad height.
+                    // Keyboard is opened
+                    // Adjust your chat layout here
+                    RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) binding.chatRecyclerView.getLayoutParams();
+                    layoutParams.setMargins(layoutParams.leftMargin, layoutParams.topMargin, layoutParams.rightMargin, keypadHeight/30);
+                    binding.chatRecyclerView.setLayoutParams(layoutParams);
+                } else {
+                    // Keyboard is closed
+                    // Reset your chat layout here
+                    RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) binding.chatRecyclerView.getLayoutParams();
+                    layoutParams.setMargins(layoutParams.leftMargin, layoutParams.topMargin, layoutParams.rightMargin, 0);
+                    binding.chatRecyclerView.setLayoutParams(layoutParams);
+                }
+            }
+        });
+
 
         // Add TextWatcher to EditText
         binding.messageEt.addTextChangedListener(new TextWatcher() {
@@ -126,42 +165,6 @@ public class ChatDetailActivity extends AppCompatActivity {
             }
         });
 
-
-
-
-
-        //to ensure adapter chat is not null
-        chatList = new ArrayList<>();
-        adapterChat = new AdapterChat(ChatDetailActivity.this, chatList, hisImage);
-        binding.chatRecyclerView.setAdapter(adapterChat);
-
-        binding.chatRecyclerView.setHasFixedSize(true);
-        binding.chatRecyclerView.setLayoutManager(linearLayoutManager);
-
-
-        binding.getRoot().getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                Rect r = new Rect();
-                binding.getRoot().getWindowVisibleDisplayFrame(r);
-                int screenHeight = binding.getRoot().getRootView().getHeight();
-                int keypadHeight = screenHeight - r.bottom;
-
-                if (keypadHeight > screenHeight * 0.15) { // 0.15 ratio is perhaps enough to determine keypad height.
-                    // Keyboard is opened
-                    // Adjust your chat layout here
-                    RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) binding.chatRecyclerView.getLayoutParams();
-                    layoutParams.setMargins(layoutParams.leftMargin, layoutParams.topMargin, layoutParams.rightMargin, keypadHeight/30);
-                    binding.chatRecyclerView.setLayoutParams(layoutParams);
-                } else {
-                    // Keyboard is closed
-                    // Reset your chat layout here
-                    RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) binding.chatRecyclerView.getLayoutParams();
-                    layoutParams.setMargins(layoutParams.leftMargin, layoutParams.topMargin, layoutParams.rightMargin, 0);
-                    binding.chatRecyclerView.setLayoutParams(layoutParams);
-                }
-            }
-        });
 
 
         Intent intent=getIntent();
@@ -240,17 +243,20 @@ public class ChatDetailActivity extends AppCompatActivity {
             String message = binding.messageEt.getText().toString().trim();
             if (!TextUtils.isEmpty(message)) {
                 sendMessage(message);
-                // Scroll to the last message
+
+                // Post animation to smoothly scroll to the new message
                 binding.chatRecyclerView.post(() -> {
                     if (!chatList.isEmpty()) {
                         binding.chatRecyclerView.smoothScrollToPosition(chatList.size() - 1);
                     }
                 });
+
                 binding.messageEt.setText(""); // Clear the input field
             } else {
                 Toast.makeText(ChatDetailActivity.this, "Cannot send an empty message", Toast.LENGTH_SHORT).show();
             }
         });
+
 
 
 
@@ -300,21 +306,27 @@ public class ChatDetailActivity extends AppCompatActivity {
         dbRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                chatList.clear(); // Clear the chat list before adding new data
+                List<ModelChat> newChats = new ArrayList<>();
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     ModelChat chat = ds.getValue(ModelChat.class);
                     if (chat != null && (
                             (chat.getReceiver().equals(myUid) && chat.getSender().equals(hisUid)) ||
                                     (chat.getReceiver().equals(hisUid) && chat.getSender().equals(myUid)))) {
-                        chatList.add(chat);
+                        newChats.add(chat);
                     }
                 }
 
-                adapterChat.notifyDataSetChanged(); // Notify adapter of data changes
+                if (!newChats.equals(chatList)) { // Only update if there's a change
+                    int oldSize = chatList.size();
+                    chatList.clear();
+                    chatList.addAll(newChats);
 
-                // Scroll to the last message
-                if (!chatList.isEmpty()) {
-                    binding.chatRecyclerView.smoothScrollToPosition(chatList.size() - 1);
+                    if (chatList.size() > oldSize) {
+                        adapterChat.notifyItemRangeInserted(oldSize, chatList.size() - oldSize);
+                        binding.chatRecyclerView.smoothScrollToPosition(chatList.size() - 1);
+                    } else {
+                        adapterChat.notifyDataSetChanged();
+                    }
                 }
             }
 
