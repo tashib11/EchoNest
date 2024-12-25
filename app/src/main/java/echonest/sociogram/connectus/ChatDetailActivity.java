@@ -398,31 +398,60 @@ public class ChatDetailActivity extends AppCompatActivity {
 
 
     private void sendVideoMessage(Uri videoUri) {
-        ProgressDialog progressDialog = new ProgressDialog(this);
-        progressDialog.setMessage("Uploading video...");
-        progressDialog.setCancelable(false);
-        progressDialog.show();
-
         String timeStamp = String.valueOf(System.currentTimeMillis());
         String filePath = "ChatVideos/" + timeStamp + ".mp4";
 
+        // Add a temporary message to the UI with local video URI and uploading state
+        ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "video", false, null);
+        tempChat.setLocalImageUri(videoUri.toString()); // Set the local video URI
+        tempChat.setUploading(true); // Set as uploading
+        tempChat.setUploadProgress(0); // Initialize progress to 0
+
+        chatList.add(tempChat);
+        adapterChat.notifyItemInserted(chatList.size() - 1);
+        binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
+
+        // Firebase Storage reference
         StorageReference videoRef = FirebaseStorage.getInstance().getReference().child(filePath);
         UploadTask uploadTask = videoRef.putFile(videoUri);
 
         uploadTask.addOnProgressListener(taskSnapshot -> {
-            double progress = (100.0 * taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
-            progressDialog.setMessage("Uploading: " + (int) progress + "%");
-        }).addOnCompleteListener(task -> {
-            progressDialog.dismiss();
-            if (task.isSuccessful()) {
-                videoRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
-                    sendVideoMessageToDatabase(downloadUri.toString());
-                });
-            } else {
-                Toast.makeText(this, "Video upload failed.", Toast.LENGTH_SHORT).show();
+            long bytesTransferred = taskSnapshot.getBytesTransferred();
+            long totalByteCount = taskSnapshot.getTotalByteCount();
+            int progress = (int) (100 * bytesTransferred / totalByteCount);
+
+            Log.d("UploadProgress", "Bytes transferred: " + bytesTransferred + "/" + totalByteCount + " (" + progress + "%)");
+
+            // Update progress in the temporary message
+            tempChat.setUploadProgress(progress);
+
+            int position = chatList.indexOf(tempChat);
+            if (position != -1) {
+                adapterChat.notifyItemChanged(position);
             }
+        }).addOnSuccessListener(taskSnapshot -> {
+            videoRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
+                // Update message with final URL
+                tempChat.setMessage(downloadUri.toString());
+                tempChat.setUploading(false); // Mark as uploaded
+                tempChat.setUploadProgress(100); // Final progress
+
+                int position = chatList.indexOf(tempChat);
+                if (position != -1) {
+                    adapterChat.notifyItemChanged(position);
+                }
+
+                // Save to Firebase Realtime Database
+                sendVideoMessageToDatabase(downloadUri.toString());
+            });
+        }).addOnFailureListener(e -> {
+            // Remove the message on failure
+            chatList.remove(tempChat);
+            adapterChat.notifyDataSetChanged();
+            Toast.makeText(this, "Video upload failed.", Toast.LENGTH_SHORT).show();
         });
     }
+
 
     private void sendVideoMessageToDatabase(String videoUrl) {
         String timeStamp = String.valueOf(System.currentTimeMillis());
