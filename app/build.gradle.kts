@@ -70,4 +70,7 @@ implementation("com.airbnb.android:lottie:3.7.0")
 
     implementation ("jp.wasabeef:glide-transformations:4.3.0")
 
+    implementation("com.google.android.exoplayer:exoplayer:2.19.0")
+
+
 }
