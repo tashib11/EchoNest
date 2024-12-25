@@ -232,7 +232,11 @@ public class ChatDetailActivity extends AppCompatActivity {
         });
 
 
-
+        binding.headbar.setOnClickListener(view -> {
+            Intent intent1= new Intent(ChatDetailActivity.this, inboxDetailActivity.class);
+            intent1.putExtra("hisUid", hisUid);
+          startActivity(intent1);
+                });
 
 
 
@@ -271,12 +275,13 @@ public class ChatDetailActivity extends AppCompatActivity {
             pickVideoFromGallery();
 
         });
-        binding.backArrow.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent=new Intent(ChatDetailActivity.this,MainActivity.class);
-                startActivity(intent);
-            }
+        binding.backArrow.setOnClickListener(view -> {
+//            @Override
+//            public void onClick(View view) {
+//                Intent intent=new Intent(ChatDetailActivity.this,MainActivity.class);
+//                startActivity(intent);
+//            }
+            finish();
         });
 
         readMessages();

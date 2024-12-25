@@ -12,20 +12,21 @@
         android:background="#1E1E1E"
         android:elevation="4dp"
         android:padding="8dp">
-
+        <ImageView
+            android:id="@+id/backArrow"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="Back"
+            android:src="@drawable/baseline_arrow_back_24"
+            app:tint="#FFFFFF" />
         <LinearLayout
+            android:id="@+id/headbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <ImageView
-                android:id="@+id/backArrow"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:contentDescription="Back"
-                android:src="@drawable/baseline_arrow_back_24"
-                app:tint="#FFFFFF" />
+
 
             <de.hdodenhof.circleimageview.CircleImageView
                 android:id="@+id/profileIv"
@@ -37,9 +38,10 @@
                 app:civ_border_width="2dp" />
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
+                android:layout_weight="1"
                 android:layout_marginStart="8dp">
 
                 <TextView
@@ -59,8 +61,18 @@
                     android:textColor="#B0BEC5"
                     android:textSize="14sp" />
             </LinearLayout>
+
+            <ImageView
+                android:id="@+id/settingsbtn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="end"
+                android:contentDescription="Settings"
+                android:src="@drawable/baseline_kebab_dining_24"
+               />
         </LinearLayout>
     </androidx.appcompat.widget.Toolbar>
+
 
     <!-- RecyclerView for Chat Messages -->
     <androidx.recyclerview.widget.RecyclerView
