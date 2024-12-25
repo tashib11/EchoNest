@@ -3,12 +3,14 @@ package echonest.sociogram.connectus;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import android.animation.ObjectAnimator;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Rect;
@@ -107,7 +109,18 @@ public class ChatDetailActivity extends AppCompatActivity {
         // Post animation to smoothly scroll to the new message
         binding.chatRecyclerView.setItemAnimator(new CustomItemAnimator());
 
+        SharedPreferences sharedPreferences = getSharedPreferences("AppSettings", MODE_PRIVATE);
+        boolean isDarkMode = sharedPreferences.getBoolean("DarkMode", true);
 
+        updateTheme(isDarkMode);
+
+        // Listen for preference changes to apply theme dynamically
+        sharedPreferences.registerOnSharedPreferenceChangeListener((sharedPrefs, key) -> {
+            if ("DarkMode".equals(key)) {
+                boolean newDarkModeState = sharedPrefs.getBoolean("DarkMode", true);
+                updateTheme(newDarkModeState);
+            }
+        });
 
 
 
@@ -285,6 +298,32 @@ public class ChatDetailActivity extends AppCompatActivity {
 
     }
 
+    private void updateTheme(boolean isDarkMode) {
+        if (isDarkMode) {
+//            binding.mainLayout.setBackgroundColor(ContextCompat.getColor(this, R.color.blacklight));
+//            binding.messageEt.setTextColor(ContextCompat.getColor(this, R.color.white));
+//            binding.messageEt.setHintTextColor(ContextCompat.getColor(this, R.color.gray));
+        } else {
+            binding.chatRecyclerView.setBackgroundColor(ContextCompat.getColor(this, R.color.light_background));
+            binding.chatLayout.setBackgroundColor(ContextCompat.getColor(this, R.color.white));
+            binding.messageEt.setBackgroundColor(ContextCompat.getColor(this, R.color.light_background));
+            binding.messageEt.setHintTextColor(ContextCompat.getColor(this, R.color.dark_gray));
+            binding.messageEt.setTextColor(ContextCompat.getColor(this, R.color.black));
+            binding.nameTv.setTextColor(ContextCompat.getColor(this, R.color.black));
+            binding.userStatusTv.setTextColor(ContextCompat.getColor(this, R.color.black));
+            binding.backArrow.setBackgroundColor(ContextCompat.getColor(this, R.color.black));
+            binding.toolbar.setBackgroundColor(ContextCompat.getColor(this, R.color.light_background));
+
+
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        SharedPreferences sharedPreferences = getSharedPreferences("AppSettings", MODE_PRIVATE);
+        sharedPreferences.unregisterOnSharedPreferenceChangeListener((sharedPrefs, key) -> {});
+    }
     private void pickVideoFromGallery() {
         Intent videoIntent = new Intent(Intent.ACTION_PICK);
         videoIntent.setType("video/*");

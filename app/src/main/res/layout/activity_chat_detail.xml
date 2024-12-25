@@ -11,7 +11,7 @@
         android:layout_height="wrap_content"
         android:background="#1E1E1E"
         android:elevation="4dp"
-        android:padding="8dp">
+        android:padding="6dp">
         <ImageView
             android:id="@+id/backArrow"
             android:layout_width="40dp"
