@@ -4,6 +4,7 @@ import static com.google.firebase.database.FirebaseDatabase.getInstance;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import android.content.Intent;
 import android.net.Uri;
@@ -124,10 +125,26 @@ ActivityInboxDetailBinding binding;
         } else {
             Toast.makeText(this, "No user ID passed.", Toast.LENGTH_SHORT).show();
         }
+
+        // Initial setup for dark mode
+        binding.mainLayout.setBackgroundColor(ContextCompat.getColor(this, R.color.blacklight));
+
+        // Set listener for the dark mode switch
+        binding.darkModeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                binding.darkModeStatus.setText("Enabled");
+                binding.mainLayout.setBackgroundColor(ContextCompat.getColor(this, R.color.blacklight)); // Dark mode
+            } else {
+                binding.darkModeStatus.setText("Disabled");
+                binding.mainLayout.setBackgroundColor(getResources().getColor(R.color.white)); // Light mode
+            }
+        });
     }
 
     @Override
     public void onBackPressed() {
        finish();
     }
+
+
 }
