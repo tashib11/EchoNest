@@ -9,6 +9,7 @@ import android.animation.ObjectAnimator;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
@@ -47,6 +48,7 @@ import com.google.firebase.storage.UploadTask;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -318,80 +320,106 @@ public class ChatDetailActivity extends AppCompatActivity {
         // scroll to the bottom of the RecyclerView
         binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
     }
-    private void sendImageMessage(Uri imageUri) throws IOException {
+    private void sendImageMessage(Uri imageUri) {
         String timeStamp = String.valueOf(System.currentTimeMillis());
         String fileNameAndPath = "ChatImages/" + timeStamp;
 
-        // Create Bitmap from URI and compress it
-        Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos);
-        byte[] data = baos.toByteArray();
-
-        // Add a temporary message to the UI with local image URI and uploading state
+        // Declare tempChat inside the method
         ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "image", false, null);
-        tempChat.setLocalImageUri(imageUri.toString()); // Store the local image URI
-        tempChat.setUploading(true); // Set the message to uploading
-        tempChat.setUploadProgress(0); // Initialize progress to 0
+        tempChat.setLocalImageUri(imageUri.toString());
+        tempChat.setUploading(true);
+        tempChat.setUploadProgress(0);
 
+        // Add tempChat to the chatList and update the adapter
         chatList.add(tempChat);
-        adapterChat.notifyItemInserted(chatList.size() - 1);
-        binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
+        runOnUiThread(() -> {
+            adapterChat.notifyItemInserted(chatList.size() - 1);
+            binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
+        });
 
-        // Firebase Storage reference
-        StorageReference ref = FirebaseStorage.getInstance().getReference().child(fileNameAndPath);
-        ref.putBytes(data)
-                .addOnProgressListener(taskSnapshot -> {
-                    long bytesTransferred = taskSnapshot.getBytesTransferred();
-                    long totalByteCount = taskSnapshot.getTotalByteCount();
-                    int progress = (int) (100 * bytesTransferred / totalByteCount);
+        new Thread(() -> {
+            try {
+                Bitmap bitmap = decodeSampledBitmapFromUri(imageUri, 800, 800);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 60, baos);
+                byte[] data = baos.toByteArray();
 
-                    Log.d("UploadProgress", "Bytes transferred: " + bytesTransferred + "/" + totalByteCount + " (" + progress + "%)");
+                // Firebase Storage reference
+                StorageReference ref = FirebaseStorage.getInstance().getReference().child(fileNameAndPath);
+                ref.putBytes(data)
+                        .addOnProgressListener(taskSnapshot -> {
+                            // Update progress
+                            int progress = (int) (100 * taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
+                            tempChat.setUploadProgress(progress);
+                            runOnUiThread(() -> adapterChat.notifyItemChanged(chatList.indexOf(tempChat)));
+                        })
+                        .addOnSuccessListener(taskSnapshot -> {
+                            // Get download URL and save to database
+                            taskSnapshot.getStorage().getDownloadUrl().addOnSuccessListener(uri -> {
+                                tempChat.setMessage(uri.toString());
+                                tempChat.setUploading(false);
+                                tempChat.setUploadProgress(100);
 
-                    // Update the progress in the message
-                    tempChat.setUploadProgress(progress);
+                                runOnUiThread(() -> adapterChat.notifyItemChanged(chatList.indexOf(tempChat)));
+                                saveMessageToDatabase(uri.toString(), timeStamp);
+                            });
+                        })
+                        .addOnFailureListener(e -> {
+                            // Remove tempChat on failure
+                            chatList.remove(tempChat);
+                            runOnUiThread(adapterChat::notifyDataSetChanged);
+                        });
 
-                    // Notify the adapter to refresh the UI
-                    int position = chatList.indexOf(tempChat);
-                    if (position != -1) {
-                        adapterChat.notifyItemChanged(position);
-                    }
-                })
-                .addOnSuccessListener(taskSnapshot -> {
-                    Task<Uri> uriTask = taskSnapshot.getStorage().getDownloadUrl();
-                    while (!uriTask.isSuccessful());
-
-                    String downloadUri = uriTask.getResult().toString();
-                    if (uriTask.isSuccessful()) {
-                        // Replace temp message with uploaded URL
-                        tempChat.setMessage(downloadUri);
-                        tempChat.setUploading(false); // Mark as uploaded
-                        tempChat.setUploadProgress(100); // Final progress
-
-                        int position = chatList.indexOf(tempChat);
-                        if (position != -1) {
-                            adapterChat.notifyItemChanged(position);
-                        }
-
-                        // Save to Firebase Realtime Database
-                        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
-                        HashMap<String, Object> hashMap = new HashMap<>();
-                        hashMap.put("sender", myUid);
-                        hashMap.put("receiver", hisUid);
-                        hashMap.put("message", downloadUri);
-                        hashMap.put("timestamp", timeStamp);
-                        hashMap.put("type", "image");
-                        hashMap.put("isSeen", false);
-                        databaseReference.child("Chats").push().setValue(hashMap);
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    // Handle upload failure
-                    chatList.remove(tempChat);
-                    adapterChat.notifyDataSetChanged();
-                });
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
 
 
+    private Bitmap decodeSampledBitmapFromUri(Uri imageUri, int reqWidth, int reqHeight) throws IOException {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        InputStream input = getContentResolver().openInputStream(imageUri);
+        BitmapFactory.decodeStream(input, null, options);
+        input.close();
+
+        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+        options.inJustDecodeBounds = false;
+
+        input = getContentResolver().openInputStream(imageUri);
+        Bitmap sampledBitmap = BitmapFactory.decodeStream(input, null, options);
+        input.close();
+
+        return sampledBitmap;
+    }
+
+    private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
+        int height = options.outHeight;
+        int width = options.outWidth;
+        int inSampleSize = 1;
+
+        if (height > reqHeight || width > reqWidth) {
+            final int halfHeight = height / 2;
+            final int halfWidth = width / 2;
+
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2;
+            }
+        }
+        return inSampleSize;
+    }
+
+    private void saveMessageToDatabase(String downloadUri, String timeStamp) {
+        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
+        HashMap<String, Object> hashMap = new HashMap<>();
+        hashMap.put("sender", myUid);
+        hashMap.put("receiver", hisUid);
+        hashMap.put("message", downloadUri);
+        hashMap.put("timestamp", timeStamp);
+        hashMap.put("type", "image");
+        hashMap.put("isSeen", false);
+        databaseReference.child("Chats").push().setValue(hashMap);
     }
 
 
@@ -467,26 +495,7 @@ public class ChatDetailActivity extends AppCompatActivity {
 
         databaseReference.push().setValue(messageMap);
     }
-    private void updateChatList(String senderId, String receiverId) {
-        DatabaseReference chatRef = FirebaseDatabase.getInstance()
-                .getReference("Chatlist")
-                .child(senderId)
-                .child(receiverId);
 
-        chatRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (!snapshot.exists()) {
-                    chatRef.child("id").setValue(receiverId);
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Log.e("ChatListUpdate", "Failed to update chat list: " + error.getMessage());
-            }
-        });
-    }
 
 
 
@@ -541,11 +550,9 @@ public class ChatDetailActivity extends AppCompatActivity {
         if(resultCode==RESULT_OK){
             if(requestCode==GALLERY_REQUEST_CODE){
                 image_rui=data.getData();
-                try {
+
                     sendImageMessage(image_rui);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+
             } else if (requestCode == VIDEO_REQUEST_CODE) {
                 Uri videoUri = data.getData();
                 try {
