@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import android.animation.ObjectAnimator;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -15,7 +16,9 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -23,6 +26,8 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
@@ -91,6 +96,39 @@ public class ChatDetailActivity extends AppCompatActivity {
 // layout for Recycler view
         LinearLayoutManager linearLayoutManager= new LinearLayoutManager(this);
         linearLayoutManager.setStackFromEnd(true);
+
+        // Add TextWatcher to EditText
+        binding.messageEt.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                // No action needed
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                // Show or hide the attachmentLayout based on input
+                if (s.length() > 0) {
+                    binding.attachmentLayout.setVisibility(View.GONE); // Hide when text is entered
+                    binding.likebtn.setVisibility(View.GONE);  // Hide the like button
+                    binding.sendbtn.setVisibility(View.VISIBLE);  // Show the send button
+
+                } else {
+                    binding.attachmentLayout.setVisibility(View.VISIBLE); // Show when EditText is empty
+                    binding.likebtn.setVisibility(View.VISIBLE);  // Show the like button
+                    binding.sendbtn.setVisibility(View.GONE);  // Hide the send button
+
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                // No action needed
+            }
+        });
+
+
+
+
 
         //to ensure adapter chat is not null
         chatList = new ArrayList<>();
@@ -190,16 +228,28 @@ public class ChatDetailActivity extends AppCompatActivity {
             }
         });
 
+
+
+
+
+
+
+
+
         binding.sendbtn.setOnClickListener(view -> {
 
-            String message= binding.messageEt.getText().toString();
+            // Get the input text and trim it to remove trailing spaces/newlines
+            String message = binding.messageEt.getText().toString().trim();
 
-            if(TextUtils.isEmpty(message)){
-
-            }else{
+            // Check if the message is not empty after trimming
+            if (!TextUtils.isEmpty(message)) {
                 sendMessage(message);
+            } else {
+                // Optionally show a message if the input is empty
+                Toast.makeText(ChatDetailActivity.this, "Cannot send an empty message", Toast.LENGTH_SHORT).show();
             }
         });
+
 
         binding.attachBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -268,6 +318,10 @@ public class ChatDetailActivity extends AppCompatActivity {
         });
 
     }
+
+
+
+
 
     private void sendMessage(String message) {
         DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
