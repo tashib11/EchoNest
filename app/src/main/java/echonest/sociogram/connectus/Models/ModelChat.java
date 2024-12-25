@@ -1,5 +1,9 @@
 package echonest.sociogram.connectus.Models;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
+
 public class ModelChat {
     String message, receiver, sender, timestamp, type;
     boolean isSeen;
@@ -40,13 +44,7 @@ public class ModelChat {
 //
 //    }
 
-    public String getThumbnailUrl() {
-        return thumbnailUrl;
-    }
 
-    public void setThumbnailUrl(String thumbnailUrl) {
-        this.thumbnailUrl = thumbnailUrl;
-    }
 
     // Getter and Setter for message
     public String getMessage() {
@@ -130,5 +128,25 @@ public class ModelChat {
     }
 
     // Getter and Setter for thumbnailUri
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
+    }
+
+    public void setThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
+    }
+
+
+    public String getFormattedTimestamp() {
+        try {
+            Calendar cal = Calendar.getInstance(Locale.ENGLISH);
+            cal.setTimeInMillis(Long.parseLong(timestamp));
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy hh:mm aa", Locale.ENGLISH);
+            return sdf.format(cal.getTime());
+        } catch (NumberFormatException e) {
+            return "";
+        }
+    }
+
 
 }
