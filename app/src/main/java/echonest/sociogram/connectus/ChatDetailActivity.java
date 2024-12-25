@@ -237,18 +237,21 @@ public class ChatDetailActivity extends AppCompatActivity {
 
 
         binding.sendbtn.setOnClickListener(view -> {
-
-            // Get the input text and trim it to remove trailing spaces/newlines
             String message = binding.messageEt.getText().toString().trim();
-
-            // Check if the message is not empty after trimming
             if (!TextUtils.isEmpty(message)) {
                 sendMessage(message);
+                // Scroll to the last message
+                binding.chatRecyclerView.post(() -> {
+                    if (!chatList.isEmpty()) {
+                        binding.chatRecyclerView.smoothScrollToPosition(chatList.size() - 1);
+                    }
+                });
+                binding.messageEt.setText(""); // Clear the input field
             } else {
-                // Optionally show a message if the input is empty
                 Toast.makeText(ChatDetailActivity.this, "Cannot send an empty message", Toast.LENGTH_SHORT).show();
             }
         });
+
 
 
         binding.attachBtn.setOnClickListener(new View.OnClickListener() {
@@ -293,32 +296,34 @@ public class ChatDetailActivity extends AppCompatActivity {
 
 
     private void readMessages() {
-        chatList = new ArrayList<>();
         DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Chats");
         dbRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                chatList.clear();
-                for(DataSnapshot ds: snapshot.getChildren()){
-                    ModelChat chat=ds.getValue(ModelChat.class);
-                    if(chat.getReceiver().equals(myUid) && chat.getSender().equals(hisUid) ||
-                            chat.getReceiver().equals(hisUid) && chat.getSender().equals(myUid)){
+                chatList.clear(); // Clear the chat list before adding new data
+                for (DataSnapshot ds : snapshot.getChildren()) {
+                    ModelChat chat = ds.getValue(ModelChat.class);
+                    if (chat != null && (
+                            (chat.getReceiver().equals(myUid) && chat.getSender().equals(hisUid)) ||
+                                    (chat.getReceiver().equals(hisUid) && chat.getSender().equals(myUid)))) {
                         chatList.add(chat);
                     }
-                    adapterChat=new AdapterChat(ChatDetailActivity.this,chatList,hisImage);
-                    //set adapter to recyclerview
-                    binding.chatRecyclerView.setAdapter(adapterChat);
+                }
+
+                adapterChat.notifyDataSetChanged(); // Notify adapter of data changes
+
+                // Scroll to the last message
+                if (!chatList.isEmpty()) {
+                    binding.chatRecyclerView.smoothScrollToPosition(chatList.size() - 1);
                 }
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-
+                Toast.makeText(ChatDetailActivity.this, "Failed to load messages.", Toast.LENGTH_SHORT).show();
             }
         });
-
     }
-
 
 
 
