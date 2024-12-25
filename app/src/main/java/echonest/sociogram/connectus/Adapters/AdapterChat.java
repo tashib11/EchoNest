@@ -29,6 +29,8 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -78,12 +80,26 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
         switch (currentMessage.getType()) {
             case "text":
                 handleTextMessage(holder, currentMessage);
+                holder.messageLayout.setOnLongClickListener(v -> {
+                    showDeleteDialog(position);
+                    return true;
+                });
                 break;
+
             case "image":
                 handleImageMessage(holder, currentMessage);
+                holder.messageIv.setOnLongClickListener(v -> {
+                    showDeleteDialog(position);
+                    return true;
+                });
                 break;
+
             case "video":
                 handleVideoMessage(holder, currentMessage);
+                holder.messageVideoThumbnail.setOnLongClickListener(v -> {
+                    showDeleteDialog(position);
+                    return true;
+                });
                 break;
         }
 
@@ -97,13 +113,8 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
         } else {
             holder.isSeenTv.setVisibility(View.GONE);
         }
-
-        // Long-click to delete message
-        holder.messageLayout.setOnLongClickListener(v -> {
-            showDeleteDialog(position);
-            return true;
-        });
     }
+
 
     @Override
     public int getItemCount() {
@@ -271,9 +282,25 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     if (Objects.equals(ds.child("sender").getValue(), myUID)) {
-                        HashMap<String, Object> hashMap = new HashMap<>();
-                        hashMap.put("message", "This message was deleted");
-                        ds.getRef().updateChildren(hashMap);
+                        String messageType = ds.child("type").getValue(String.class);
+                        if ("image".equals(messageType) || "video".equals(messageType)) {
+                            // Delete the image or video URL from Firebase Storage
+                            String mediaUrl = ds.child("message").getValue(String.class);
+                            if (mediaUrl != null) {
+                                StorageReference storageRef = FirebaseStorage.getInstance().getReferenceFromUrl(mediaUrl);
+                                storageRef.delete().addOnSuccessListener(unused -> {
+                                    // Update message in the database
+                                    updateDeletedMessage(ds.getRef());
+                                }).addOnFailureListener(e -> {
+                                    Toast.makeText(context, "Failed to delete media file", Toast.LENGTH_SHORT).show();
+                                });
+                            } else {
+                                updateDeletedMessage(ds.getRef());
+                            }
+                        } else {
+                            // For text messages
+                            updateDeletedMessage(ds.getRef());
+                        }
                     } else {
                         Toast.makeText(context, "You can delete only your message", Toast.LENGTH_SHORT).show();
                     }
@@ -286,6 +313,18 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
             }
         });
     }
+
+    private void updateDeletedMessage(DatabaseReference messageRef) {
+        HashMap<String, Object> hashMap = new HashMap<>();
+        hashMap.put("message", "This message was deleted");
+        hashMap.put("type", "text"); // Update type to text
+        messageRef.updateChildren(hashMap).addOnSuccessListener(unused ->
+                Toast.makeText(context, "Message deleted", Toast.LENGTH_SHORT).show()
+        ).addOnFailureListener(e ->
+                Toast.makeText(context, "Failed to update message", Toast.LENGTH_SHORT).show()
+        );
+    }
+
 
     static class MyHolder extends RecyclerView.ViewHolder {
         ImageView profileIv, messageIv, messageVideoThumbnail, playButtonOverlay;
