@@ -91,38 +91,27 @@
     </RelativeLayout>
 
     <!-- Video and Progress Container -->
-    <RelativeLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp">
 
-        <!-- Video View -->
-        <VideoView
-            android:id="@+id/messageVideoView"
-            android:layout_width="250dp"
-            android:layout_height="300dp"
-            android:layout_marginBottom="5dp"
-            android:src="@drawable/ic_image_black"
-            android:scaleType="centerCrop" />
+
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
 
         <ImageView
-            android:id="@+id/playIcon"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_centerInParent="true"
+            android:id="@+id/messageVideoThumbnail"
+            android:layout_width="250dp"
+            android:layout_height="250dp"
+            android:scaleType="centerCrop"
+            android:contentDescription="Video thumbnail" />
+
+        <ImageView
+            android:id="@+id/playButtonOverlay"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:layout_gravity="center"
             android:src="@drawable/ic_play_circle"
-            android:visibility="gone" />
-
-        <!-- Progress Bar -->
-        <ProgressBar
-            android:id="@+id/videoProgressBar"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_centerInParent="true"
-            android:visibility="gone"
-            android:indeterminateTint="@color/blue" />
-    </RelativeLayout>
+            android:contentDescription="Play video" />
+    </FrameLayout>
 
     <!-- Seen Status -->
     <TextView

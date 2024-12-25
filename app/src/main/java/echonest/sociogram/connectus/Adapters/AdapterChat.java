@@ -95,7 +95,9 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
         holder.messageTv.setVisibility(View.GONE);
         holder.messageIv.setVisibility(View.GONE);
         holder.progressBar.setVisibility(View.GONE);
-        holder.messageVideoView.setVisibility(View.GONE);
+//        holder.messageVideoView.setVisibility(View.GONE);
+        holder.messageVideoThumbnail.setVisibility(View.GONE);
+        holder.playButtonOverlay.setVisibility(View.GONE);
 
         String chatType = currentMessage.getType();
 
@@ -154,29 +156,30 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
         }
 
         else if ("video".equals(chatType)) {
-            // Show the video thumbnail
-            holder.messageIv.setVisibility(View.VISIBLE);
-            holder.playIcon.setVisibility(View.VISIBLE); // Ensure play icon is visible
-            holder.videoProgressBar.setVisibility(View.GONE); // Hide progress bar by default
+            holder.messageVideoThumbnail.setVisibility(View.VISIBLE);
+            holder.playButtonOverlay.setVisibility(View.VISIBLE);
 
-            // Parse the video URI
-            Uri videoUri = Uri.parse(currentMessage.getMessage()); // Assuming message contains the video URL
-
-            // Load and display the video thumbnail using Glide
+            // Use Glide to load video thumbnail
             Glide.with(context)
-                    .load(videoUri) // This assumes the thumbnail can be derived from the video URL
-                    .placeholder(R.drawable.baseline_image_24) // Placeholder while loading
-                    .into(holder.messageIv);
+                    .asBitmap()
+                    .load(Uri.parse(currentMessage.getMessage())) // Video URL
+                    .placeholder(R.drawable.baseline_image_24)
+                    .into(holder.messageVideoThumbnail);
 
-            // Set OnClickListener to play the video in full-screen mode
-            holder.messageIv.setOnClickListener(v -> {
+            // Play button click listener
+            holder.playButtonOverlay.setOnClickListener(v -> {
                 Intent intent = new Intent(context, FullScreenVideoActivity.class);
-                intent.putExtra("video_url", currentMessage.getMessage());
+                intent.putExtra("videoUrl", currentMessage.getMessage());
+                context.startActivity(intent);
+            });
+
+            // Thumbnail click listener
+            holder.messageVideoThumbnail.setOnClickListener(v -> {
+                Intent intent = new Intent(context, FullScreenVideoActivity.class);
+                intent.putExtra("videoUrl", currentMessage.getMessage());
                 context.startActivity(intent);
             });
         }
-
-
 
         // Set profile image (sender's image)
         try {
@@ -206,19 +209,8 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
             builder.create().show();
             return true;
         });
-
-
-        // Set seen/delivered status
-        if(position==chatList.size()-1) {
-            if (chatList.get(position).isSeen()) {
-                holder.isSeenTv.setText("Seen");
-            } else {
-                holder.isSeenTv.setText("Delivered");
-            }
-        }else{
-            holder.isSeenTv.setVisibility(View.GONE);
-        }
     }
+
 
     private void deleteMessage(int position) {
         String myUID= Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid();//sender id
@@ -296,7 +288,7 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
 
     static class MyHolder extends RecyclerView.ViewHolder {
         VideoView messageVideoView;
-        ImageView profileIv, messageIv, playIcon;
+        ImageView profileIv, messageIv, playIcon,messageVideoThumbnail, playButtonOverlay;
         TextView messageTv, timeTv, isSeenTv;
         LinearLayout messageLayout; // For click listener to show delete
         ProgressBar progressBar, videoProgressBar;    // Add ProgressBar reference
@@ -309,12 +301,15 @@ public class AdapterChat extends  RecyclerView.Adapter<AdapterChat.MyHolder> {
             timeTv = itemView.findViewById(R.id.timeTv);
             isSeenTv = itemView.findViewById(R.id.isSeenTv);
             messageLayout = itemView.findViewById(R.id.messageLayout);
-            messageVideoView = itemView.findViewById(R.id.messageVideoView);
+//            messageVideoView = itemView.findViewById(R.id.messageVideoView);
             progressBar = itemView.findViewById(R.id.progressBar); // Initialize ProgressBar
-            videoProgressBar = itemView.findViewById(R.id.videoProgressBar); // Initialize ProgressBar
+//            videoProgressBar = itemView.findViewById(R.id.videoProgressBar); // Initialize ProgressBar
 
             progressPercentage = itemView.findViewById(R.id.progressPercentage);
-            playIcon = itemView.findViewById(R.id.playIcon);
+          //  playIcon = itemView.findViewById(R.id.playIcon);
+            // Initialize video-related views
+            messageVideoThumbnail = itemView.findViewById(R.id.messageVideoThumbnail);
+            playButtonOverlay = itemView.findViewById(R.id.playButtonOverlay);
         }
     }
 

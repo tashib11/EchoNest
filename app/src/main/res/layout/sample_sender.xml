@@ -91,38 +91,27 @@
 
     <!-- Video Container -->
     <FrameLayout
-        android:layout_gravity="end"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="5dp">
+        android:layout_gravity="end">
 
-        <!-- VideoView for displaying video -->
-        <VideoView
-            android:id="@+id/messageVideoView"
+        <ImageView
+            android:id="@+id/messageVideoThumbnail"
             android:layout_width="250dp"
             android:layout_height="250dp"
-            android:contentDescription="Video message"
-            android:layout_gravity="center"
-            android:visibility="gone" />
+            android:scaleType="centerCrop"
+            android:contentDescription="Video thumbnail" />
 
-        <!-- Play icon, displayed on top of video thumbnail -->
         <ImageView
-            android:id="@+id/playIcon"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
+            android:id="@+id/playButtonOverlay"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:layout_gravity="center"
-        android:src="@drawable/ic_play_circle"
-        android:visibility="gone" />
-
-
-        <!-- Video loading progress -->
-        <ProgressBar
-            android:id="@+id/videoProgressBar"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center"
-            android:visibility="gone" />
+            android:src="@drawable/ic_play_circle"
+            android:contentDescription="Play video" />
     </FrameLayout>
+
+
 
 
     <!-- Seen Status -->

@@ -8,24 +8,44 @@ public class ModelChat {
     String localImageUri; // Temporary local URI during upload
     boolean isUploading; // Indicates if the message is being uploaded
     int uploadProgress; // Upload progress percentage
-    String thumbnailUri; // URI for video thumbnail during upload
+    String thumbnailUrl; // URI for video thumbnail during upload
 
     // Default constructor
     public ModelChat() {
     }
 
     // Constructor for general use
-    public ModelChat(String message, String receiver, String sender, String timestamp, String type, boolean isSeen) {
+    public ModelChat(String message, String receiver, String sender, String timestamp, String type, boolean isSeen, String thumbnailUrl) {
         this.message = message;
         this.receiver = receiver;
         this.sender = sender;
         this.timestamp = timestamp;
         this.type = type;
         this.isSeen = isSeen;
+        this.thumbnailUrl = thumbnailUrl;
         this.localImageUri = null;
         this.isUploading = false;
         this.uploadProgress = 0;
-        this.thumbnailUri = null;
+    }
+//    public ModelChat(String message, String receiver, String sender, String timestamp, String type, boolean isSeen) {
+//        this.message = message;
+//        this.receiver = receiver;
+//        this.sender = sender;
+//        this.timestamp = timestamp;
+//        this.type = type;
+//        this.isSeen = isSeen;
+//        this.localImageUri = null;
+//        this.isUploading = false;
+//        this.uploadProgress = 0;
+//
+//    }
+
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
+    }
+
+    public void setThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
     }
 
     // Getter and Setter for message
@@ -110,11 +130,5 @@ public class ModelChat {
     }
 
     // Getter and Setter for thumbnailUri
-    public String getThumbnailUri() {
-        return thumbnailUri;
-    }
 
-    public void setThumbnailUri(String thumbnailUri) {
-        this.thumbnailUri = thumbnailUri;
-    }
 }
