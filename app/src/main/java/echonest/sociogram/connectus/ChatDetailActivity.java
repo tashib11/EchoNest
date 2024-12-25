@@ -276,11 +276,7 @@ public class ChatDetailActivity extends AppCompatActivity {
 
         });
         binding.backArrow.setOnClickListener(view -> {
-//            @Override
-//            public void onClick(View view) {
-//                Intent intent=new Intent(ChatDetailActivity.this,MainActivity.class);
-//                startActivity(intent);
-//            }
+
             finish();
         });
 
