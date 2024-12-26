@@ -3,13 +3,18 @@ package echonest.sociogram.connectus;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
@@ -59,6 +64,36 @@ public class MainActivity extends AppCompatActivity {
         drawerLayout.addDrawerListener(toggle);//for sliding , mane shob vabei drawer use kora jabe
         toggle.syncState();// open hole bolbe ji open vai , close hole state ta hobe close
 
+        MenuItem darkModeMenuItem = navigationView.getMenu().findItem(R.id.darkModeSwitch);
+        if (darkModeMenuItem != null) {
+            View actionView = darkModeMenuItem.getActionView();
+            if (actionView != null) {
+                SwitchCompat darkModeSwitch = actionView.findViewById(R.id.nav_dark_mode_switch);
+                if (darkModeSwitch != null) {
+                    // Load dark mode preference
+                    SharedPreferences sharedPreferences = getSharedPreferences("AppSettings", MODE_PRIVATE);
+                    boolean isDarkMode = sharedPreferences.getBoolean("DarkMode", true);
+                    darkModeSwitch.setChecked(isDarkMode);
+
+                    // Listen for switch changes
+                    darkModeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                        SharedPreferences.Editor editor = sharedPreferences.edit();
+                        editor.putBoolean("DarkMode", isChecked);
+                        editor.apply();
+
+                        AppCompatDelegate.setDefaultNightMode(isChecked
+                                ? AppCompatDelegate.MODE_NIGHT_YES
+                                : AppCompatDelegate.MODE_NIGHT_NO);
+                    });
+                } else {
+                    Log.e("MainActivity", "SwitchCompat not found in actionView");
+                }
+            } else {
+                Log.e("MainActivity", "actionView not found for MenuItem");
+            }
+        } else {
+            Log.e("MainActivity", "MenuItem darkModeSwitch not found");
+        }
 
         getSupportActionBar().setTitle("Chats");
 
