@@ -6,11 +6,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
@@ -64,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
         drawerLayout.addDrawerListener(toggle);//for sliding , mane shob vabei drawer use kora jabe
         toggle.syncState();// open hole bolbe ji open vai , close hole state ta hobe close
 
+         boolean isDarkMode=true;
         MenuItem darkModeMenuItem = navigationView.getMenu().findItem(R.id.darkModeSwitch);
         if (darkModeMenuItem != null) {
             View actionView = darkModeMenuItem.getActionView();
@@ -72,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
                 if (darkModeSwitch != null) {
                     // Load dark mode preference
                     SharedPreferences sharedPreferences = getSharedPreferences("AppSettings", MODE_PRIVATE);
-                    boolean isDarkMode = sharedPreferences.getBoolean("DarkMode", true);
+                     isDarkMode = sharedPreferences.getBoolean("DarkMode", true);
                     darkModeSwitch.setChecked(isDarkMode);
 
                     // Listen for switch changes
@@ -84,7 +87,13 @@ public class MainActivity extends AppCompatActivity {
                         AppCompatDelegate.setDefaultNightMode(isChecked
                                 ? AppCompatDelegate.MODE_NIGHT_YES
                                 : AppCompatDelegate.MODE_NIGHT_NO);
+                        // Update NavigationView background color
+                        int navBackgroundColor = ContextCompat.getColor(this,
+                                isChecked ? R.color.colorPrimary : R.color.light_background);
+                        navigationView.setBackgroundColor(navBackgroundColor);
                     });
+
+
                 } else {
                     Log.e("MainActivity", "SwitchCompat not found in actionView");
                 }
@@ -94,6 +103,21 @@ public class MainActivity extends AppCompatActivity {
         } else {
             Log.e("MainActivity", "MenuItem darkModeSwitch not found");
         }
+
+
+        if (isDarkMode) {
+ binding.navDrawer.setBackgroundColor(ContextCompat.getColor(this, R.color.colorPrimary));
+
+        }else {
+            binding.bottomAppBar.setBackgroundTint (ColorStateList.valueOf(ContextCompat.getColor(this, R.color.appbar)));
+//            binding.chatLayout.setBackgroundColor(ContextCompat.getColor(this, R.color.white));
+            binding.bottomNavigation.setBackgroundColor(ContextCompat.getColor(this, R.color.appbar));
+            binding.bottomNavigation.setItemTextColor(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.black)));
+
+           binding.navDrawer.setBackgroundColor(ContextCompat.getColor(this, R.color.light_background));
+            binding.navDrawer.setItemTextColor(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.black)));
+        }
+
 
         getSupportActionBar().setTitle("Chats");
 
@@ -153,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-  public void onBackPressed() {
+    public void onBackPressed() {
       if(drawerLayout.isDrawerOpen(GravityCompat.START)){
           drawerLayout.closeDrawer(GravityCompat.START);
           // if u pressed back button then drawer will be off

@@ -5,6 +5,7 @@
         android:id="@+id/settings"
 android:icon="@drawable/baseline_settings_24"
         android:title="settings"
+
         />
     <item
         android:id="@+id/darkModeSwitch"

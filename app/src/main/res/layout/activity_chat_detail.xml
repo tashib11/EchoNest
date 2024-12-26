@@ -68,7 +68,7 @@
                 android:layout_height="40dp"
                 android:layout_gravity="end"
                 android:contentDescription="Settings"
-                android:src="@drawable/baseline_kebab_dining_24"
+                android:src="@drawable/menu_vertical"
                />
         </LinearLayout>
     </androidx.appcompat.widget.Toolbar>

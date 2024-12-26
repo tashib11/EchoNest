@@ -4,8 +4,9 @@
     android:layout_height="wrap_content"
     android:backgroundTint="#1E1E1E"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    app:contentPadding="3dp">
+    app:contentPadding="1dp">
     <RelativeLayout
+        android:id="@+id/chatlistColor"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#121212">
