@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -50,22 +51,42 @@ ActivityInboxDetailBinding binding;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (Build.VERSION.SDK_INT >= 21) {
-            Window window = this.getWindow();
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-            window.setStatusBarColor(this.getResources().getColor(R.color.black));
-        }
 
+        // to set up darkmode features
+        SharedPreferences sharedPreferences = getSharedPreferences("AppSettings", MODE_PRIVATE);
+        boolean isDarkMode = sharedPreferences.getBoolean("DarkMode", true);
+
+        updateTheme(isDarkMode);
+
+        // Listen for preference changes to apply theme dynamically
+        sharedPreferences.registerOnSharedPreferenceChangeListener((sharedPrefs, key) -> {
+            if ("DarkMode".equals(key)) {
+                boolean newDarkModeState = sharedPrefs.getBoolean("DarkMode", true);
+                updateTheme(newDarkModeState);
+            }
+        });
+
+
+
+
+        // Set up layout
         binding = ActivityInboxDetailBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        binding.mainLayout.setBackgroundColor(isDarkMode
+                ? ContextCompat.getColor(this, R.color.blacklight)
+                : ContextCompat.getColor(this, R.color.white));
+
+        // Initialize Firebase and other components
         firebaseAuth = FirebaseAuth.getInstance();
-        firebaseDatabase = getInstance();
+        firebaseDatabase = FirebaseDatabase.getInstance();
         user = firebaseAuth.getCurrentUser();
         databaseReference = firebaseDatabase.getReference("Users");
         storage = FirebaseStorage.getInstance();
-        storageReference = storage.getReference(); // Firebase storage reference
+        storageReference = storage.getReference();
+
+
+
 
         // Get hisUid from the Intent
         Intent intent = getIntent();
@@ -126,19 +147,12 @@ ActivityInboxDetailBinding binding;
             Toast.makeText(this, "No user ID passed.", Toast.LENGTH_SHORT).show();
         }
 
-        // Initial setup for dark mode
-        binding.mainLayout.setBackgroundColor(ContextCompat.getColor(this, R.color.blacklight));
 
-        // Set listener for the dark mode switch
-        binding.darkModeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                binding.darkModeStatus.setText("Enabled");
-                binding.mainLayout.setBackgroundColor(ContextCompat.getColor(this, R.color.blacklight)); // Dark mode
-            } else {
-                binding.darkModeStatus.setText("Disabled");
-                binding.mainLayout.setBackgroundColor(getResources().getColor(R.color.white)); // Light mode
-            }
-        });
+
+    }
+
+    private void updateTheme(boolean isDarkMode) {
+
     }
 
     @Override
