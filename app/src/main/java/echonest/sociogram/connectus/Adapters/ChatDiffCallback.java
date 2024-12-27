@@ -6,7 +6,7 @@ import java.util.List;
 
 import echonest.sociogram.connectus.Models.ModelChat;
 
-class ChatDiffCallback extends DiffUtil.Callback {
+public class ChatDiffCallback extends DiffUtil.Callback {
     private final List<ModelChat> oldList;
     private final List<ModelChat> newList;
 

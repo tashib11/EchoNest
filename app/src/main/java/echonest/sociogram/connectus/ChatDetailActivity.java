@@ -5,7 +5,9 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-
+import android.animation.ObjectAnimator;
+import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -13,6 +15,7 @@ import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -23,7 +26,10 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
-
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
@@ -32,6 +38,7 @@ import echonest.sociogram.connectus.Adapters.AdapterChat;
 import echonest.sociogram.connectus.Models.ModelChat;
 import com.example.connectus.R;
 import com.example.connectus.databinding.ActivityChatDetailBinding;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -56,269 +63,197 @@ import java.util.Locale;
 
 
 public class ChatDetailActivity extends AppCompatActivity {
-    ActivityChatDetailBinding binding;
-    FirebaseDatabase database;
-    FirebaseAuth firebaseAuth;
-    DatabaseReference usersDbRef;
-    String hisUid,myUid;
-    String hisImage;
+    private ActivityChatDetailBinding binding;
+    private FirebaseDatabase database;
+    private FirebaseAuth firebaseAuth;
+    private DatabaseReference usersDbRef;
+    private String hisUid, myUid;
+    private String hisImage;
 
-    AdapterChat adapterChat;
-    List<ModelChat> chatList;
+    private AdapterChat adapterChat;
+    private final List<ModelChat> chatList = new ArrayList<>();
 
-
-    private  static  final  int GALLERY_REQUEST_CODE = 400;
+    private static final int GALLERY_REQUEST_CODE = 400;
     private static final int VIDEO_REQUEST_CODE = 500;
 
-    Uri image_rui=null;
+    private Uri imageUri = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setStatusBarColor(R.color.black);
+
+        binding = ActivityChatDetailBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
+
+        initializeChatRecyclerView();
+        initializeTextWatcher();
+
+        firebaseAuth = FirebaseAuth.getInstance();
+        database = FirebaseDatabase.getInstance();
+
+        Intent intent = getIntent();
+        hisUid = intent.getStringExtra("hisUid");
+
+        loadUserDetails();
+
+        binding.sendbtn.setOnClickListener(v -> sendMessage());
+        binding.attachBtn.setOnClickListener(v -> pickImageFromGallery());
+        binding.attachBtnVideo.setOnClickListener(v -> pickVideoFromGallery());
+        binding.backArrow.setOnClickListener(v -> finish());
+
+        loadMessages();
+    }
+
+    private void setStatusBarColor(int colorId) {
         if (Build.VERSION.SDK_INT >= 21) {
-            Window window = this.getWindow();
+            Window window = getWindow();
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
             window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-            ((Window) window).setStatusBarColor(this.getResources().getColor(R.color.black));
+            window.setStatusBarColor(getResources().getColor(colorId));
         }
-//        getSupportActionBar().hide();
-        binding=ActivityChatDetailBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
-// layout for Recycler view
-        LinearLayoutManager linearLayoutManager= new LinearLayoutManager(this);
-        linearLayoutManager.setStackFromEnd(true);
-        //to ensure adapter chat is not null
-        chatList = new ArrayList<>();
-        adapterChat = new AdapterChat(ChatDetailActivity.this, chatList, hisImage);
-        binding.chatRecyclerView.setAdapter(adapterChat);
+    }
 
+    private void initializeChatRecyclerView() {
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
+        linearLayoutManager.setStackFromEnd(true);
+
+        adapterChat = new AdapterChat(this, chatList, hisImage);
+        binding.chatRecyclerView.setAdapter(adapterChat);
         binding.chatRecyclerView.setHasFixedSize(true);
         binding.chatRecyclerView.setLayoutManager(linearLayoutManager);
 
-        // Post animation to smoothly scroll to the new message
-        binding.chatRecyclerView.setItemAnimator(new CustomItemAnimator());
+    }
 
-
-
-        binding.getRoot().getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                Rect r = new Rect();
-                binding.getRoot().getWindowVisibleDisplayFrame(r);
-                int screenHeight = binding.getRoot().getRootView().getHeight();
-                int keypadHeight = screenHeight - r.bottom;
-
-                if (keypadHeight > screenHeight * 0.15) { // 0.15 ratio is perhaps enough to determine keypad height.
-                    // Keyboard is opened
-                    // Adjust your chat layout here
-                    RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) binding.chatRecyclerView.getLayoutParams();
-                    layoutParams.setMargins(layoutParams.leftMargin, layoutParams.topMargin, layoutParams.rightMargin, keypadHeight/30);
-                    binding.chatRecyclerView.setLayoutParams(layoutParams);
-                } else {
-                    // Keyboard is closed
-                    // Reset your chat layout here
-                    RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) binding.chatRecyclerView.getLayoutParams();
-                    layoutParams.setMargins(layoutParams.leftMargin, layoutParams.topMargin, layoutParams.rightMargin, 0);
-                    binding.chatRecyclerView.setLayoutParams(layoutParams);
-                }
-            }
-        });
-
-
-        // Add TextWatcher to EditText
+    private void initializeTextWatcher() {
         binding.messageEt.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                // No action needed
-            }
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                // Show or hide the attachmentLayout based on input
                 if (s.length() > 0) {
-                    binding.attachmentLayout.setVisibility(View.GONE); // Hide when text is entered
-                    binding.likebtn.setVisibility(View.GONE);  // Hide the like button
-                    binding.sendbtn.setVisibility(View.VISIBLE);  // Show the send button
-
+                    binding.attachmentLayout.setVisibility(View.GONE);
+                    binding.likebtn.setVisibility(View.GONE);
+                    binding.sendbtn.setVisibility(View.VISIBLE);
                 } else {
-                    binding.attachmentLayout.setVisibility(View.VISIBLE); // Show when EditText is empty
-                    binding.likebtn.setVisibility(View.VISIBLE);  // Show the like button
-                    binding.sendbtn.setVisibility(View.GONE);  // Hide the send button
-
+                    binding.attachmentLayout.setVisibility(View.VISIBLE);
+                    binding.likebtn.setVisibility(View.VISIBLE);
+                    binding.sendbtn.setVisibility(View.GONE);
                 }
             }
 
             @Override
-            public void afterTextChanged(Editable s) {
-                // No action needed
-            }
+            public void afterTextChanged(Editable s) {}
         });
+    }
 
+    private void loadUserDetails() {
+        usersDbRef = database.getReference("Users");
+        Query userQuery = usersDbRef.orderByChild("userId").equalTo(hisUid);
 
-
-        Intent intent=getIntent();
-        hisUid= intent.getStringExtra("hisUid");
-        firebaseAuth=FirebaseAuth.getInstance();
-        database= FirebaseDatabase.getInstance();
-
-        usersDbRef=database.getReference("Users");
-
-        //search user to get that user;s info
-        Query userQuery= usersDbRef.orderByChild("userId").equalTo(hisUid);
-        //get user picture and name
         userQuery.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                //check untill required info is received
-                for(DataSnapshot ds: snapshot.getChildren()){
-                    //get data
-                    String name=""+ds.child("name").getValue();
-                    hisImage=""+ds.child("profilePhoto").getValue();
-//get value of online status
-                    String  onlineStatus=""+ds.child("onlineStatus").getValue();
-                    if(onlineStatus.equals("online")){
-                        binding.userStatusTv.setText(onlineStatus);
+                for (DataSnapshot ds : snapshot.getChildren()) {
+                    String name = "" + ds.child("name").getValue();
+                    hisImage = "" + ds.child("profilePhoto").getValue();
+                    String onlineStatus = "" + ds.child("onlineStatus").getValue();
 
-
-                    }else{
-                        //convert timestamp to proper time date
-                        try {
-                            // Convert timestamp to dd//mm//yyyy hh:mm am/pm
-                            Calendar cal = Calendar.getInstance(Locale.ENGLISH);
-                            cal.setTimeInMillis(Long.parseLong(onlineStatus));
-
-                            SimpleDateFormat sdf = new SimpleDateFormat("dd//MM//yyyy hh:mm aa", Locale.ENGLISH);
-                            String dateTime = sdf.format(cal.getTime());
-
-                            // Set data
-                            binding.userStatusTv.setText("Last seen: "+dateTime);
-
-                        } catch (NumberFormatException e) {
-                            Log.e("TimeStamp Error", "Invalid timestamp format", e);
-                        }
-                    }
-                    //set data
                     binding.nameTv.setText(name);
+                    updateUserStatus(onlineStatus);
 
-                    if (!isFinishing()) {
-                        try {
-                            Glide.with(ChatDetailActivity.this)
-                                    .load(hisImage)
-                                    .placeholder(R.drawable.avatar)
-                                    .into(binding.profileIv);
-                        } catch (Exception e) {
-                            Glide.with(ChatDetailActivity.this)
-                                    .load(R.drawable.avatar)
-                                    .into(binding.profileIv);
-                        }
-                    }}
+                    Glide.with(ChatDetailActivity.this)
+                            .load(hisImage)
+                            .placeholder(R.drawable.avatar)
+                            .into(binding.profileIv);
+                }
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
+            public void onCancelled(@NonNull DatabaseError error) {}
         });
-
-
-        binding.headbar.setOnClickListener(view -> {
-            Intent intent1= new Intent(ChatDetailActivity.this, inboxDetailActivity.class);
-            intent1.putExtra("hisUid", hisUid);
-            startActivity(intent1);
-        });
-
-
-
-
-
-
-        binding.sendbtn.setOnClickListener(view -> {
-            String message = binding.messageEt.getText().toString().trim();
-            if (!TextUtils.isEmpty(message)) {
-                sendMessage(message);
-
-                // Post animation to smoothly scroll to the new message
-                binding.chatRecyclerView.post(() -> {
-                    if (!chatList.isEmpty()) {
-                        binding.chatRecyclerView.smoothScrollToPosition(chatList.size() - 1);
-                    }
-                });
-
-                binding.messageEt.setText(""); // Clear the input field
-            } else {
-                Toast.makeText(ChatDetailActivity.this, "Cannot send an empty message", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-
-
-
-        binding.attachBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                pickImageFromeGallery();
-            }
-        });
-
-        binding.attachBtnVideo.setOnClickListener(view -> {
-            pickVideoFromGallery();
-
-        });
-        binding.backArrow.setOnClickListener(view -> {
-
-            finish();
-        });
-
-        readMessages();
-//        seenMessage();
-
     }
 
-
-    private void pickVideoFromGallery() {
-        Intent videoIntent = new Intent(Intent.ACTION_PICK);
-        videoIntent.setType("video/*");
-        startActivityForResult(videoIntent, VIDEO_REQUEST_CODE);
+    private void updateUserStatus(String onlineStatus) {
+        if (onlineStatus.equals("online")) {
+            binding.userStatusTv.setText(onlineStatus);
+        } else {
+            try {
+                Calendar cal = Calendar.getInstance(Locale.ENGLISH);
+                cal.setTimeInMillis(Long.parseLong(onlineStatus));
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy hh:mm aa", Locale.ENGLISH);
+                String dateTime = sdf.format(cal.getTime());
+                binding.userStatusTv.setText("Last seen: " + dateTime);
+            } catch (NumberFormatException e) {
+                Log.e("TimeStamp Error", "Invalid timestamp format", e);
+            }
+        }
     }
 
-    private void pickImageFromeGallery() {
-        Intent igallery= new Intent(Intent.ACTION_PICK);
-//        igallery.setData(MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        igallery.setType("image/*");
-        startActivityForResult(igallery,GALLERY_REQUEST_CODE);
+    private void sendMessage() {
+        String message = binding.messageEt.getText().toString().trim();
+        if (!TextUtils.isEmpty(message)) {
+            // Create a temporary message object
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            ModelChat tempMessage = new ModelChat(message, hisUid, myUid, timestamp, "text", false, null);
 
+            // Add the temporary message to the chat list
+            chatList.add(tempMessage);
+
+            // Notify the adapter on the main thread
+            runOnUiThread(() -> {
+                adapterChat.notifyItemInserted(chatList.size() - 1);
+                binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
+            });
+
+            // Clear the input field immediately
+            binding.messageEt.setText("");
+
+            // Send the message to Firebase in the background
+            DatabaseReference chatRef = FirebaseDatabase.getInstance().getReference("Chats");
+
+            HashMap<String, Object> messageMap = new HashMap<>();
+            messageMap.put("sender", myUid);
+            messageMap.put("receiver", hisUid);
+            messageMap.put("message", message);
+            messageMap.put("timestamp", timestamp);
+            messageMap.put("isSeen", false);
+            messageMap.put("type", "text");
+
+            chatRef.push().setValue(messageMap).addOnCompleteListener(task -> {
+                if (!task.isSuccessful()) {
+                    // Remove the temporary message if sending fails
+                    chatList.remove(tempMessage);
+                    runOnUiThread(() -> adapterChat.notifyDataSetChanged());
+                    Toast.makeText(this, "Message sending failed", Toast.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            Toast.makeText(this, "Cannot send an empty message", Toast.LENGTH_SHORT).show();
+        }
     }
 
 
 
 
-    private void readMessages() {
+    private void loadMessages() {
         DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Chats");
+
         dbRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                List<ModelChat> newChats = new ArrayList<>();
+                chatList.clear();
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     ModelChat chat = ds.getValue(ModelChat.class);
                     if (chat != null && (
                             (chat.getReceiver().equals(myUid) && chat.getSender().equals(hisUid)) ||
                                     (chat.getReceiver().equals(hisUid) && chat.getSender().equals(myUid)))) {
-                        newChats.add(chat);
+                        chatList.add(chat);
                     }
                 }
-
-                if (!newChats.equals(chatList)) { // Only update if there's a change
-                    int oldSize = chatList.size();
-                    chatList.clear();
-                    chatList.addAll(newChats);
-
-                    if (chatList.size() > oldSize) {
-                        adapterChat.notifyItemRangeInserted(oldSize, chatList.size() - oldSize);
-                        binding.chatRecyclerView.smoothScrollToPosition(chatList.size() - 1);
-                    } else {
-                        adapterChat.notifyDataSetChanged();
-                    }
-                }
+                adapterChat.notifyDataSetChanged();
+                binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
             }
 
             @Override
@@ -328,31 +263,32 @@ public class ChatDetailActivity extends AppCompatActivity {
         });
     }
 
-
-
-
-    private void sendMessage(String message) {
-        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
-        String timestamp = String.valueOf(System.currentTimeMillis());
-
-        HashMap<String, Object> messageMap = new HashMap<>();
-        messageMap.put("sender", myUid);
-        messageMap.put("receiver", hisUid);
-        messageMap.put("message", message);
-        messageMap.put("timestamp", timestamp);
-        messageMap.put("isSeen", false);
-        messageMap.put("type", "text");
-
-        HashMap<String, Object> updates = new HashMap<>();
-        String messageKey = databaseReference.child("Chats").push().getKey();
-        updates.put("Chats/" + messageKey, messageMap);
-        updates.put("Chatlist/" + myUid + "/" + hisUid + "/id", hisUid);
-        updates.put("Chatlist/" + hisUid + "/" + myUid + "/id", myUid);
-
-        databaseReference.updateChildren(updates);
-        binding.messageEt.setText(""); // Reset input
-
+    private void pickImageFromGallery() {
+        Intent intent = new Intent(Intent.ACTION_PICK);
+        intent.setType("image/*");
+        startActivityForResult(intent, GALLERY_REQUEST_CODE);
     }
+
+    private void pickVideoFromGallery() {
+        Intent intent = new Intent(Intent.ACTION_PICK);
+        intent.setType("video/*");
+        startActivityForResult(intent, VIDEO_REQUEST_CODE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK && data != null) {
+            if (requestCode == GALLERY_REQUEST_CODE) {
+                imageUri = data.getData();
+                sendImageMessage(imageUri);
+            } else if (requestCode == VIDEO_REQUEST_CODE) {
+                Uri videoUri = data.getData();
+                sendVideoMessage(videoUri);
+            }
+        }
+    }
+
     private void sendImageMessage(Uri imageUri) {
         String timeStamp = String.valueOf(System.currentTimeMillis());
         String fileNameAndPath = "ChatImages/" + timeStamp;
@@ -456,8 +392,6 @@ public class ChatDetailActivity extends AppCompatActivity {
     }
 
 
-
-
     private void sendVideoMessage(Uri videoUri) {
         String timeStamp = String.valueOf(System.currentTimeMillis());
         String filePath = "ChatVideos/" + timeStamp + ".mp4";
@@ -530,89 +464,9 @@ public class ChatDetailActivity extends AppCompatActivity {
     }
 
 
-
-
-
-    private  void checkUserStatus(){
-        FirebaseUser user= firebaseAuth.getCurrentUser();
-        if(user!=null){
-//user is signed in
-            //set email of logged in user
-            //mprofileTv.setText(user.getEmail());
-            myUid=user.getUid();
-        }else{
-            startActivity(new Intent(this, SignInActivity.class));
-            finish();
-        }
-    }
-
-    private void  checkOnlineStatus(String status){
-        DatabaseReference dbRef= FirebaseDatabase.getInstance().getReference("Users").child(myUid);
-        HashMap<String,Object> hashMap= new HashMap<>();
-        hashMap.put("onlineStatus",status);
-        dbRef.updateChildren(hashMap);
-    }
-
     @Override
     protected void onStart() {
-        checkUserStatus();
-        //set online
-        checkOnlineStatus("online");
         super.onStart();
+        myUid = firebaseAuth.getCurrentUser().getUid();
     }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        //get timestamp
-        String timestamp= String.valueOf(System.currentTimeMillis());
-        //set offiline with last seen time stamp
-        checkOnlineStatus(timestamp);
-//        userRefForSeen.removeEventListener(seenListener);
-    }
-
-    @Override
-    protected void onResume() {
-        //set online
-        checkOnlineStatus("online");
-        super.onResume();
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if(resultCode==RESULT_OK){
-            if(requestCode==GALLERY_REQUEST_CODE){
-                image_rui=data.getData();
-
-                sendImageMessage(image_rui);
-
-            } else if (requestCode == VIDEO_REQUEST_CODE) {
-                Uri videoUri = data.getData();
-                try {
-                    sendVideoMessage(videoUri);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        super.onActivityResult(requestCode, resultCode, data);
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu,menu);
-        //hide searchview
-        menu.findItem(R.id.action_search).setVisible(false);
-        return super.onCreateOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-
-        int id =item.getItemId();
-//        if(id==R.id.logout) {
-//            firebaseAuth.signOut();
-//            checkUserStatus();
-//        }
-        return super.onOptionsItemSelected(item);
-    }}
+}

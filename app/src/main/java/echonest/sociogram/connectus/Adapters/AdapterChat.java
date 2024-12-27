@@ -7,6 +7,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -324,6 +325,18 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
                 Toast.makeText(context, "Failed to update message", Toast.LENGTH_SHORT).show()
         );
     }
+
+//    @Override
+//    public void onViewAttachedToWindow(@NonNull MyHolder holder) {
+//        super.onViewAttachedToWindow(holder);
+//        holder.itemView.setTranslationY(holder.itemView.getHeight()); // Start below
+//        holder.itemView.animate()
+//                .translationY(0)  // Animate to normal position
+//                .setDuration(100) // Duration of the animation
+//                .setInterpolator(new DecelerateInterpolator()) // Smooth animation
+//                .start();
+//    }
+
 
 
     static class MyHolder extends RecyclerView.ViewHolder {
