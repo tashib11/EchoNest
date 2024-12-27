@@ -3,21 +3,16 @@ package echonest.sociogram.connectus;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import android.animation.ObjectAnimator;
-import android.app.ProgressDialog;
-import android.content.Context;
+
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -28,10 +23,7 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
+
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
@@ -40,7 +32,6 @@ import echonest.sociogram.connectus.Adapters.AdapterChat;
 import echonest.sociogram.connectus.Models.ModelChat;
 import com.example.connectus.R;
 import com.example.connectus.databinding.ActivityChatDetailBinding;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -71,9 +62,7 @@ public class ChatDetailActivity extends AppCompatActivity {
     DatabaseReference usersDbRef;
     String hisUid,myUid;
     String hisImage;
-    //for checking if user has seen message or not
-    ValueEventListener seenListener;
-    DatabaseReference userRefForSeen;
+
     AdapterChat adapterChat;
     List<ModelChat> chatList;
 
@@ -108,19 +97,6 @@ public class ChatDetailActivity extends AppCompatActivity {
 
         // Post animation to smoothly scroll to the new message
         binding.chatRecyclerView.setItemAnimator(new CustomItemAnimator());
-
-        SharedPreferences sharedPreferences = getSharedPreferences("AppSettings", MODE_PRIVATE);
-        boolean isDarkMode = sharedPreferences.getBoolean("DarkMode", true);
-
-        updateTheme(isDarkMode);
-
-        // Listen for preference changes to apply theme dynamically
-        sharedPreferences.registerOnSharedPreferenceChangeListener((sharedPrefs, key) -> {
-            if ("DarkMode".equals(key)) {
-                boolean newDarkModeState = sharedPrefs.getBoolean("DarkMode", true);
-                updateTheme(newDarkModeState);
-            }
-        });
 
 
 
@@ -248,8 +224,8 @@ public class ChatDetailActivity extends AppCompatActivity {
         binding.headbar.setOnClickListener(view -> {
             Intent intent1= new Intent(ChatDetailActivity.this, inboxDetailActivity.class);
             intent1.putExtra("hisUid", hisUid);
-          startActivity(intent1);
-                });
+            startActivity(intent1);
+        });
 
 
 
@@ -298,32 +274,7 @@ public class ChatDetailActivity extends AppCompatActivity {
 
     }
 
-    private void updateTheme(boolean isDarkMode) {
-        if (isDarkMode) {
-//            binding.mainLayout.setBackgroundColor(ContextCompat.getColor(this, R.color.blacklight));
-//            binding.messageEt.setTextColor(ContextCompat.getColor(this, R.color.white));
-//            binding.messageEt.setHintTextColor(ContextCompat.getColor(this, R.color.gray));
-        } else {
-            binding.chatRecyclerView.setBackgroundColor(ContextCompat.getColor(this, R.color.light_background));
-            binding.chatLayout.setBackgroundColor(ContextCompat.getColor(this, R.color.white));
-            binding.messageEt.setBackgroundColor(ContextCompat.getColor(this, R.color.light_background));
-            binding.messageEt.setHintTextColor(ContextCompat.getColor(this, R.color.dark_gray));
-            binding.messageEt.setTextColor(ContextCompat.getColor(this, R.color.black));
-            binding.nameTv.setTextColor(ContextCompat.getColor(this, R.color.black));
-            binding.userStatusTv.setTextColor(ContextCompat.getColor(this, R.color.black));
-            binding.backArrow.setBackgroundColor(ContextCompat.getColor(this, R.color.black));
-            binding.toolbar.setBackgroundColor(ContextCompat.getColor(this, R.color.light_background));
 
-
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        SharedPreferences sharedPreferences = getSharedPreferences("AppSettings", MODE_PRIVATE);
-        sharedPreferences.unregisterOnSharedPreferenceChangeListener((sharedPrefs, key) -> {});
-    }
     private void pickVideoFromGallery() {
         Intent videoIntent = new Intent(Intent.ACTION_PICK);
         videoIntent.setType("video/*");
@@ -633,7 +584,7 @@ public class ChatDetailActivity extends AppCompatActivity {
             if(requestCode==GALLERY_REQUEST_CODE){
                 image_rui=data.getData();
 
-                    sendImageMessage(image_rui);
+                sendImageMessage(image_rui);
 
             } else if (requestCode == VIDEO_REQUEST_CODE) {
                 Uri videoUri = data.getData();
@@ -664,5 +615,4 @@ public class ChatDetailActivity extends AppCompatActivity {
 //            checkUserStatus();
 //        }
         return super.onOptionsItemSelected(item);
-    }
-}
+    }}

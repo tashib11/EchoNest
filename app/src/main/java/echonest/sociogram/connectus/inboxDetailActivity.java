@@ -4,10 +4,9 @@ import static com.google.firebase.database.FirebaseDatabase.getInstance;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
+
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -18,20 +17,18 @@ import android.widget.Toast;
 import com.bumptech.glide.Glide;
 import com.example.connectus.R;
 import com.example.connectus.databinding.ActivityInboxDetailBinding;
-import com.example.connectus.databinding.ActivitySettingsBinding;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
 public class inboxDetailActivity extends AppCompatActivity {
-ActivityInboxDetailBinding binding;
+    ActivityInboxDetailBinding binding;
     FirebaseAuth firebaseAuth;
     FirebaseUser user;
     FirebaseStorage storage;
@@ -50,41 +47,24 @@ ActivityInboxDetailBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
+        if (Build.VERSION.SDK_INT >= 21) {
+            Window window = this.getWindow();
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            window.setStatusBarColor(this.getResources().getColor(R.color.black));
+        }
 
-        // to set up darkmode features
-        SharedPreferences sharedPreferences = getSharedPreferences("AppSettings", MODE_PRIVATE);
-        boolean isDarkMode = sharedPreferences.getBoolean("DarkMode", true);
-
-        updateTheme(isDarkMode);
-
-        // Listen for preference changes to apply theme dynamically
-        sharedPreferences.registerOnSharedPreferenceChangeListener((sharedPrefs, key) -> {
-            if ("DarkMode".equals(key)) {
-                boolean newDarkModeState = sharedPrefs.getBoolean("DarkMode", true);
-                updateTheme(newDarkModeState);
-            }
-        });
-
-
-
-
-        // Set up layout
         binding = ActivityInboxDetailBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        binding.mainLayout.setBackgroundColor(isDarkMode
-                ? ContextCompat.getColor(this, R.color.blacklight)
-                : ContextCompat.getColor(this, R.color.white));
-
-        // Initialize Firebase and other components
         firebaseAuth = FirebaseAuth.getInstance();
-        firebaseDatabase = FirebaseDatabase.getInstance();
+        firebaseDatabase = getInstance();
         user = firebaseAuth.getCurrentUser();
         databaseReference = firebaseDatabase.getReference("Users");
         storage = FirebaseStorage.getInstance();
-        storageReference = storage.getReference();
-
+        storageReference = storage.getReference(); // Firebase storage reference
 
 
 
@@ -149,15 +129,13 @@ ActivityInboxDetailBinding binding;
 
 
 
-    }
 
-    private void updateTheme(boolean isDarkMode) {
 
     }
 
     @Override
     public void onBackPressed() {
-       finish();
+        finish();
     }
 
 

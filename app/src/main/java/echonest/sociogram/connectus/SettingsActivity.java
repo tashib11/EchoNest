@@ -6,10 +6,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -64,10 +66,22 @@ public class SettingsActivity extends AppCompatActivity {
     private  static  final  int GALLERY_REQUEST_CODE = 300;
 
 
-
+    // Class-level declaration for ValueEventListener
+    private ValueEventListener valueEventListener;
 
 ProgressDialog progressDialog;
     protected void onCreate(Bundle savedInstanceState) {
+
+        // Load dark mode preference
+        SharedPreferences sharedPreferences = getSharedPreferences("AppSettings", MODE_PRIVATE);
+        boolean isDarkMode = sharedPreferences.getBoolean("DarkMode", true);
+        // Apply the appropriate theme
+        if (isDarkMode) {
+            setTheme(R.style.DarkTheme); // Make sure DarkTheme is defined in your styles.xml
+        } else {
+            setTheme(R.style.LightTheme); // Make sure LightTheme is defined in your styles.xml
+        }
+
         super.onCreate(savedInstanceState);
         if (Build.VERSION.SDK_INT >= 21) {
             Window window = this.getWindow();
@@ -90,49 +104,71 @@ ProgressDialog progressDialog;
 storageReference = storage.getReference();//firebase storage reference
         //init arrays of permissions
 
-        Query query= databaseReference.orderByChild("email").equalTo(user.getEmail());
-        query.addValueEventListener(new ValueEventListener() {
+        // Initialize UI elements based on dark mode
+        binding.mainLayout.setBackgroundColor(isDarkMode
+                ? ContextCompat.getColor(this, R.color.blacklight)
+                : ContextCompat.getColor(this, R.color.white));
+
+        binding.darkModeSwitch.setChecked(isDarkMode);
+        binding.darkModeStatus.setText(isDarkMode ? "Enabled" : "Disabled");
+
+        // Set listener for the dark mode switch
+        binding.darkModeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            // Update the shared preference
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putBoolean("DarkMode", isChecked);
+            editor.apply();
+
+            // Restart the activity to apply the new theme
+            recreate();
+        });
+
+
+        valueEventListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                for(DataSnapshot ds : snapshot.getChildren() ){
-                    String name = ""+ ds.child("name").getValue();
-                    String email =""+ ds.child("email").getValue();
+                for (DataSnapshot ds : snapshot.getChildren()) {
+                    String name = "" + ds.child("name").getValue();
+                    String email = "" + ds.child("email").getValue();
 
-                    String image = ""+ ds.child("profilePhoto").getValue();
-                    String cover= ""+ ds.child("coverPhoto").getValue();
+                    String image = "" + ds.child("profilePhoto").getValue();
+                    String cover = "" + ds.child("coverPhoto").getValue();
                     binding.nameTv.setText(name);
                     binding.emailTv.setText(email);
 
-                    imageUrl=image;
+                    imageUrl = image;
 
-                    try {
-                        Glide.with(SettingsActivity.this)
-                                .load(image)
-                                .placeholder(R.drawable.avatar)
-                                .into(binding.avatarIv);
-                    } catch (Exception e) {
-                        Glide.with(SettingsActivity.this)
-                                .load(R.drawable.avatar)
-                                .into(binding.avatarIv);
-                    }
+                    if (!isFinishing() && !isDestroyed()) {
+                        try {
+                            Glide.with(SettingsActivity.this)
+                                    .load(image)
+                                    .placeholder(R.drawable.avatar)
+                                    .into(binding.avatarIv);
+                        } catch (Exception e) {
+                            Glide.with(SettingsActivity.this)
+                                    .load(R.drawable.avatar)
+                                    .into(binding.avatarIv);
+                        }
 
-                    try{
-//                        Picasso.get().load(cover).into(binding.coverIv);// picasso use korle high pic a app crush kore
-                        Glide.with(SettingsActivity.this)
-                                .load(cover)
-                                .into(binding.coverIv);
-                    }catch (Exception e){
-//                        Picasso.get().load(R.drawable.avatar).into(binding.avatarIv);
-
+                        try {
+                            Glide.with(SettingsActivity.this)
+                                    .load(cover)
+                                    .into(binding.coverIv);
+                        } catch (Exception e) {
+                            // Handle exception
+                        }
                     }
                 }
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-
+                // Handle errors
             }
-        });
+        };
+
+        Query query = databaseReference.orderByChild("email").equalTo(user.getEmail());
+        query.addValueEventListener(valueEventListener);
 
         binding.fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -148,6 +184,7 @@ binding.aboutTxt.setOnClickListener(view -> {
 
 
     }
+
 
     private void showEditProfileDialog() {
         String[] options ={"Edit Profile Picture", "Edit Cover Photo ","Edit Name", "Change password"};
@@ -371,6 +408,13 @@ Button updatePasswordBtn = view.findViewById(R.id.updatePasswordBtn);
         } else {
             Intent intent = new Intent(SettingsActivity.this, MainActivity.class);
             startActivity(intent);
+        }
+    }
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (databaseReference != null && valueEventListener != null) {
+            databaseReference.removeEventListener(valueEventListener);
         }
     }
 

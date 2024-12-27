@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/blacklight"
+    android:id="@+id/mainLayout"
     tools:context="echonest.sociogram.connectus.SettingsActivity">
 
     <ScrollView
@@ -131,17 +132,61 @@
     android:padding="30dp"
     android:gravity="center"
 android:layout_below="@id/scrollView">
-    <TextView
-        android:gravity="center"
-        android:id="@+id/aboutTxt"
-        android:layout_width="wrap_content"
-        android:layout_height="50dp"
- android:text="About us "
-        android:drawableLeft="@drawable/about"
-        android:drawablePadding="10dp"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        />
+
+    <!-- Dark Mode Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="16dp"
+        android:layout_below="@id/scrollView"
+        android:background="@drawable/rounded_background">
+
+        <TextView
+            android:id="@+id/darkModeTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="Dark Mode"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <Switch
+            android:id="@+id/darkModeSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:trackTint="@color/white"
+            android:thumbTint="@color/black"
+            android:checked="true"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/darkModeStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Enabled"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:layout_marginTop="8dp"
+            android:gravity="center" />
+
+        <TextView
+            android:gravity="center"
+            android:id="@+id/aboutTxt"
+            android:layout_width="wrap_content"
+            android:layout_height="50dp"
+            android:text="About us "
+            android:drawableLeft="@drawable/about"
+            android:drawablePadding="10dp"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            />
+    </LinearLayout>
+
+
 </LinearLayout>
 
 
