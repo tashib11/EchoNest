@@ -227,12 +227,24 @@ public class ChatDetailActivity extends AppCompatActivity {
                     chatList.remove(tempMessage);
                     runOnUiThread(() -> adapterChat.notifyDataSetChanged());
                     Toast.makeText(this, "Message sending failed", Toast.LENGTH_SHORT).show();
+                } else {
+                    // Add both users to the "Chatlist" node
+                    DatabaseReference chatListRef1 = FirebaseDatabase.getInstance().getReference("Chatlist")
+                            .child(myUid)
+                            .child(hisUid);
+                    chatListRef1.child("id").setValue(hisUid);
+
+                    DatabaseReference chatListRef2 = FirebaseDatabase.getInstance().getReference("Chatlist")
+                            .child(hisUid)
+                            .child(myUid);
+                    chatListRef2.child("id").setValue(myUid);
                 }
             });
         } else {
             Toast.makeText(this, "Cannot send an empty message", Toast.LENGTH_SHORT).show();
         }
     }
+
 
 
 
