@@ -7,9 +7,12 @@ import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.MenuItem;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Toast;
+
 import echonest.sociogram.connectus.Adapters.FragmentsAdapter;
 import com.example.connectus.R;
 import com.example.connectus.databinding.ActivityMainBinding;
@@ -18,15 +21,19 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationBarView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 public class MainActivity extends AppCompatActivity {
+    private static boolean isAppInForeground = false;
     DrawerLayout drawerLayout;
     NavigationView navigationView;
     BottomNavigationView bottomNavigationView;
     Toolbar toolbar;
     ActivityMainBinding binding;
     FirebaseAuth auth;
+    FirebaseUser currentUser;
+    DatabaseReference userRef;
     GoogleSignInClient mGoogleSignInClient;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +47,19 @@ public class MainActivity extends AppCompatActivity {
         binding=ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         auth=FirebaseAuth.getInstance();
+        currentUser = auth.getCurrentUser();
+
+        if (currentUser != null) {
+            String userId = currentUser.getUid();
+            userRef = FirebaseDatabase.getInstance().getReference("Users").child(userId);
+
+            // Set the current timestamp when the app is terminated
+            userRef.child("onlineStatus").onDisconnect().setValue(String.valueOf(System.currentTimeMillis()));
+
+            // Initially set the user to "online"
+            userRef.child("onlineStatus").setValue("online");
+        }
+
         drawerLayout=findViewById(R.id.drawerLayout);
         navigationView=findViewById((R.id.nav_drawer));
         bottomNavigationView=findViewById(R.id.bottom_navigation);
@@ -55,11 +75,30 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
                 int id= item.getItemId();
-                if(id==R.id.logout){
-                    auth.signOut();
-                    Intent intent=new Intent(MainActivity.this,SignInActivity.class);
-                    startActivity(intent);
+                if (id == R.id.logout) {
+                    if (currentUser != null) {
+                        String userId = currentUser.getUid();
+                        userRef = FirebaseDatabase.getInstance().getReference("Users").child(userId);
+
+                        // Set the current timestamp before logging out
+                        userRef.child("onlineStatus").setValue(String.valueOf(System.currentTimeMillis()))
+                                .addOnCompleteListener(task -> {
+                                    if (task.isSuccessful()) {
+                                        // Sign out FirebaseAuth
+                                        auth.signOut();
+
+                                        // Redirect to SignInActivity
+                                        Intent intent = new Intent(MainActivity.this, SignInActivity.class);
+                                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                        startActivity(intent);
+                                        finish();
+                                    } else {
+                                        Toast.makeText(MainActivity.this, "Failed to update status. Please try again.", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                    }
                 }
+
                 else if(id==R.id.settings){
                     Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
                     startActivity(intent);
@@ -109,4 +148,24 @@ public class MainActivity extends AppCompatActivity {
 //        getMenuInflater().inflate(R.menu.menu, menu);
 //        return super.onCreateOptionsMenu(menu);
 //    }
+@Override
+protected void onResume() {
+    super.onResume();
+    if (currentUser != null && userRef != null) {
+        userRef.child("onlineStatus").setValue("online");
+    }
+    isAppInForeground = true;
+}
+
+
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (currentUser != null && userRef != null) {
+            userRef.child("onlineStatus").setValue("online");
+        }
+    }
+
+
 }

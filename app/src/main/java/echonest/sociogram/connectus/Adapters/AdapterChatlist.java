@@ -23,19 +23,18 @@ public class AdapterChatlist extends RecyclerView.Adapter<AdapterChatlist.MyHold
 
     Context context;
     List<ModelUser> userList;
-    private HashMap<String,String> lastMessageMap;
+    private HashMap<String, String> lastMessageMap;
 
     public AdapterChatlist(Context context, List<ModelUser> userList) {
         this.context = context;
         this.userList = userList;
-        lastMessageMap = new HashMap<>();
+        this.lastMessageMap = new HashMap<>();
     }
 
     @NonNull
     @Override
     public MyHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // inflate layout row chatlist .xml
-        View view= LayoutInflater.from(context).inflate(R.layout.row_chatlist,parent,false);
+        View view = LayoutInflater.from(context).inflate(R.layout.row_chatlist, parent, false);
         return new MyHolder(view);
     }
 
@@ -48,19 +47,7 @@ public class AdapterChatlist extends RecyclerView.Adapter<AdapterChatlist.MyHold
         String lastMessage = lastMessageMap.get(hisUid);
 
         holder.nameTv.setText(userName);
-        if (lastMessage == null || lastMessage.equals("default")) {
-            holder.lastMessageTv.setVisibility(View.GONE);
-        } else {
-            holder.lastMessageTv.setVisibility(View.VISIBLE);
-            holder.lastMessageTv.setText(lastMessage);
-        }
-
-        // Display the image placeholder or last sent image
-        if (lastMessage != null && lastMessage.equals("Sent a photo")) {
-            holder.lastMessageTv.setText("photo");
-        } else {
-            holder.lastMessageTv.setText(lastMessage);
-        }
+        holder.lastMessageTv.setText(lastMessage != null ? lastMessage : "");
 
         try {
             Glide.with(context)
@@ -73,11 +60,10 @@ public class AdapterChatlist extends RecyclerView.Adapter<AdapterChatlist.MyHold
                     .into(holder.profileIv);
         }
 
-
-        String onlineStatus = userList.get(position).getOnlineStatus();
-        if(onlineStatus != null && onlineStatus.equals("online")){
+        String onlineStatus = user.getOnlineStatus();
+        if (onlineStatus != null && onlineStatus.equals("online")) {
             holder.onlineStatusIv.setImageResource(R.drawable.circle_online);
-        }else{
+        } else {
             holder.onlineStatusIv.setImageResource(R.drawable.circle_offline);
         }
 
@@ -88,14 +74,14 @@ public class AdapterChatlist extends RecyclerView.Adapter<AdapterChatlist.MyHold
         });
     }
 
-
-    public  void  setLastMessageMap(String userId, String lastMessage){
-        lastMessageMap.put(userId,lastMessage);
+    public void setLastMessageMap(HashMap<String, String> lastMessageMap) {
+        this.lastMessageMap = lastMessageMap;
+        notifyDataSetChanged();
     }
 
     @Override
     public int getItemCount() {
-        return userList.size();// size of the list
+        return userList.size();
     }
 
     static class MyHolder extends RecyclerView.ViewHolder {
@@ -110,5 +96,5 @@ public class AdapterChatlist extends RecyclerView.Adapter<AdapterChatlist.MyHold
             lastMessageTv = itemView.findViewById(R.id.lastMessageTv);
         }
     }
-
 }
+

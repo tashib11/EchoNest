@@ -6,6 +6,7 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.text.TextUtils;
@@ -15,6 +16,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import echonest.sociogram.connectus.Adapters.AdapterChatlist;
 import echonest.sociogram.connectus.Adapters.AdapterUsers;
@@ -30,21 +32,26 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 
 public class ChatsFragment extends Fragment {
     FirebaseAuth firebaseAuth;
-    DatabaseReference reference;
+    DatabaseReference chatListRef, usersRef, chatsRef;
     FirebaseUser currentUser;
-AdapterUsers adapterUsers;
-RecyclerView recyclerView;
-List<ModelUser> userList;
-List<ModelChatlist>chatlistlist;
-AdapterChatlist adapterChatlist;
+
+    RecyclerView recyclerView;
+    List<ModelUser> userList;
+    List<ModelUser> originalUserList; // Master list to retain original data
+    List<ModelChatlist> chatlistList;
+    AdapterChatlist adapterChatlist;
+    ValueEventListener chatListListener, usersListener, chatsListener;
+
     public ChatsFragment() {
         // Required empty public constructor
     }
@@ -52,208 +59,210 @@ AdapterChatlist adapterChatlist;
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_chats, container, false);
 
-        firebaseAuth= FirebaseAuth.getInstance();
-        // Inflate the layout for this fragment
-        View view= inflater.inflate(R.layout.fragment_chats, container, false);
-        recyclerView= view.findViewById(R.id.usersRecyclerView);
-//        recyclerView.setHasFixedSize(true);
-//        recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
-        //init user list
-//        userList = new ArrayList<>();
-//        getAllUsers();
-        currentUser=FirebaseAuth.getInstance().getCurrentUser();
+        // Initialize Firebase and views
+        firebaseAuth = FirebaseAuth.getInstance();
+        currentUser = firebaseAuth.getCurrentUser();
 
-        chatlistlist= new ArrayList<>();
-        currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        recyclerView = view.findViewById(R.id.usersRecyclerView);
+        recyclerView.setHasFixedSize(true);
+        recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
+
+        chatlistList = new ArrayList<>();
+        userList = new ArrayList<>();
+        originalUserList = new ArrayList<>(); // Initialize master list
+        adapterChatlist = new AdapterChatlist(getContext(), userList);
+        recyclerView.setAdapter(adapterChatlist);
+
+        // Check if the current user is logged in
         if (currentUser != null) {
-            reference = FirebaseDatabase.getInstance().getReference("Chatlist").child(currentUser.getUid());
-            reference.addValueEventListener(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot snapshot) {
-                    chatlistlist.clear();
-                    for(DataSnapshot ds: snapshot.getChildren()){
-                        ModelChatlist chatlist=ds.getValue(ModelChatlist.class);
-                        chatlistlist.add(chatlist);
-                    }
-                    loadChats();
-                }
+//
 
-                @Override
-                public void onCancelled(@NonNull DatabaseError error) {
-
-                }
-            });
+            // Load chat list
+            loadChatList();
         } else {
-            Intent intent = new Intent(getActivity(), SignInActivity.class);
-            startActivity(intent);
-            getActivity().finish();
+            redirectToSignIn();
         }
 
-
-        return  view;
+        return view;
     }
+    private void loadChatList() {
+        String currentUserId = currentUser.getUid();
+        chatListRef = FirebaseDatabase.getInstance().getReference("Chatlist").child(currentUserId);
 
-    private void loadChats() {
-        userList = new ArrayList<>();
-        reference = FirebaseDatabase.getInstance().getReference("Users");
-        reference.addValueEventListener(new ValueEventListener() {
+        chatListListener = chatListRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                userList.clear();
-                for(DataSnapshot ds: snapshot.getChildren()){
-                    ModelUser user = ds.getValue(ModelUser.class);
-                    for(ModelChatlist chatlist : chatlistlist){
-                        if(user.getUserId() != null && user.getUserId().equals(chatlist.getId())){
-                            userList.add(user);
-                            break;
-                        }
-                    }
-                    adapterChatlist = new AdapterChatlist(getContext(),userList);
-                    recyclerView.setAdapter(adapterChatlist);
-                    // set last message
-                    for(int i = 0 ; i<userList.size(); i++){
-                        lastMessage(userList.get(i).getUserId());
+                chatlistList.clear();
+                for (DataSnapshot ds : snapshot.getChildren()) {
+                    ModelChatlist chatlist = ds.getValue(ModelChatlist.class);
+                    if (chatlist != null) {
+                        chatlistList.add(chatlist);
                     }
                 }
+                loadUsers();
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-
+                Toast.makeText(getContext(), "Failed to load chat list.", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void lastMessage(String userId) {
-        DatabaseReference reference1 = FirebaseDatabase.getInstance().getReference("Chats");
-        reference1.addValueEventListener(new ValueEventListener() {
+    private void loadUsers() {
+        usersRef = FirebaseDatabase.getInstance().getReference("Users");
+
+        usersListener = usersRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                String theLastMessage = "default";
+                originalUserList.clear(); // Clear master list before repopulating
+                userList.clear(); // Clear current displayed list
+                for (DataSnapshot ds : snapshot.getChildren()) {
+                    ModelUser user = ds.getValue(ModelUser.class);
+                    if (user != null) {
+                        for (ModelChatlist chatlist : chatlistList) {
+                            if (user.getUserId() != null && user.getUserId().equals(chatlist.getId())) {
+                                originalUserList.add(user); // Add to master list
+                                userList.add(user); // Add to displayed list
+                                break;
+                            }
+                        }
+                    }
+                }
+                adapterChatlist.notifyDataSetChanged();
+                loadLastMessages();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(getContext(), "Failed to load users.", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void loadLastMessages() {
+        chatsRef = FirebaseDatabase.getInstance().getReference("Chats");
+
+        chatsListener = chatsRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                HashMap<String, String> lastMessageMap = new HashMap<>();
+
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     ModelChat chat = ds.getValue(ModelChat.class);
-                    if (chat == null) {
-                        continue;
-                    }
-                    String sender = chat.getSender();
-                    String receiver = chat.getReceiver();
-                    if (sender == null || receiver == null) {
-                        continue;
-                    }
-                    if ((chat.getReceiver().equals(currentUser.getUid()) && chat.getSender().equals(userId)) ||
-                            (chat.getReceiver().equals(userId) && chat.getSender().equals(currentUser.getUid()))) {
-                        String chatType = chat.getType();
-                        if (chatType != null && chatType.equals("image")) {
-                            theLastMessage = "Sent a photo";
-                        } else {
-                            theLastMessage = chat.getMessage();
+                    if (chat != null && currentUser != null) {
+                        String sender = chat.getSender();
+                        String receiver = chat.getReceiver();
+
+                        if (sender.equals(currentUser.getUid()) || receiver.equals(currentUser.getUid())) {
+                            String chatPartnerId = sender.equals(currentUser.getUid()) ? receiver : sender;
+
+                            String lastMessage;
+                            if (chat.getType() != null) {
+                                switch (chat.getType()) {
+                                    case "image":
+                                        lastMessage = "Sent a photo";
+                                        break;
+                                    case "video":
+                                        lastMessage = "Sent a video";
+                                        break;
+                                    default:
+                                        lastMessage = chat.getMessage(); // Default to text message
+                                        break;
+                                }
+                            } else {
+                                lastMessage = chat.getMessage(); // Handle null or unspecified type
+                            }
+
+                            lastMessageMap.put(chatPartnerId, lastMessage);
                         }
                     }
                 }
-                adapterChatlist.setLastMessageMap(userId, theLastMessage);
-                adapterChatlist.notifyDataSetChanged();
+
+                adapterChatlist.setLastMessageMap(lastMessageMap);
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-
-            }
-        });
-    }
-    private  void checkUserStatus(){
-        FirebaseUser user= firebaseAuth.getCurrentUser();
-        if(user!=null){
-
-        }else{
-            startActivity(new Intent(getActivity(), SignInActivity.class));
-            getActivity().finish();
-        }
-    }
-
-
-    // for searh bar
-    private void searchUsers(String query) {
-
-        //get current user
-        FirebaseUser fUser = FirebaseAuth.getInstance().getCurrentUser();
-        //get path of datbase named "Users" containing users info
-        DatabaseReference ref = FirebaseDatabase.getInstance().getReference("Users");
-        // get all data from path
-        ref.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                userList.clear();
-                for (DataSnapshot ds : snapshot.getChildren()) {
-                    ModelUser modelUser = ds.getValue(ModelUser.class);
-                    //get all serached users except currently signed in user
-                    if (!modelUser.getUserId().equals(fUser.getUid())) {
-                        if(modelUser.getName().toLowerCase().contains(query.toLowerCase()) ||
-                                modelUser.getName().toLowerCase().contains(query.toLowerCase())){
-                            userList.add(modelUser);
-                        }
-                    }
-                    //adapter
-                    adapterUsers = new AdapterUsers(getActivity(), userList);
-                    //refresh adawpter
-                    adapterUsers.notifyDataSetChanged();
-                    //set adapter to recycler view
-                    recyclerView.setAdapter((adapterUsers));
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
+                Toast.makeText(getContext(), "Failed to load last messages.", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
+    private void redirectToSignIn() {
+        Intent intent = new Intent(getActivity(), SignInActivity.class);
+        startActivity(intent);
+        getActivity().finish();
+    }
 
-    public void onCreate(Bundle savedInstanceState){
-        setHasOptionsMenu(true); //to show menu option in fragment
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        setHasOptionsMenu(true);
         super.onCreate(savedInstanceState);
     }
 
+    @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.menu, menu);
-
-        // Get the SearchView from the menu item
-        MenuItem menuItem=menu.findItem(R.id.action_search);
-        androidx.appcompat.widget.SearchView searchView=(androidx.appcompat.widget.SearchView) menuItem.getActionView();
+        MenuItem menuItem = menu.findItem(R.id.action_search);
+        SearchView searchView = (SearchView) menuItem.getActionView();
         searchView.setQueryHint("Search by name");
 
-        // Set up the query text listener
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String s) {
-                //called when user press search buttpm from  keyboard
-                //if search query os npt empty then search
-                if(!TextUtils.isEmpty(s.trim())){
+                if (!TextUtils.isEmpty(s.trim())) {
                     searchUsers(s);
-                }else{
-                    //search text empty  ,get all users
-//                    getAllUsers();
                 }
                 return false;
             }
 
             @Override
             public boolean onQueryTextChange(String s) {
-
-                //if search query os npt empty then search
-                if(!TextUtils.isEmpty(s.trim())){
+                if (!TextUtils.isEmpty(s.trim())) {
                     searchUsers(s);
-                }else{
-                    //search text empty  ,get all users
-//                    getAllUsers();
+                } else {
+                    restoreOriginalList(); // Restore the original list when query is cleared
                 }
                 return false;
             }
         });
 
         super.onCreateOptionsMenu(menu, inflater);
-
     }
+
+    private void searchUsers(String query) {
+        userList.clear(); // Clear displayed list
+        for (ModelUser user : originalUserList) {
+            if (user.getName().toLowerCase().contains(query.toLowerCase())) {
+                userList.add(user); // Add matching users to displayed list
+            }
+        }
+        adapterChatlist.notifyDataSetChanged();
+    }
+
+    private void restoreOriginalList() {
+        userList.clear();
+        userList.addAll(originalUserList); // Reset displayed list to the original list
+        adapterChatlist.notifyDataSetChanged();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // Ensure all listeners are removed
+        if (chatListRef != null && chatListListener != null) {
+            chatListRef.removeEventListener(chatListListener);
+        }
+        if (usersRef != null && usersListener != null) {
+            usersRef.removeEventListener(usersListener);
+        }
+        if (chatsRef != null && chatsListener != null) {
+            chatsRef.removeEventListener(chatsListener);
+        }
+    }
+
 
 }

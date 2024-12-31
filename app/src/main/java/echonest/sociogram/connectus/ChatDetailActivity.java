@@ -69,14 +69,13 @@ public class ChatDetailActivity extends AppCompatActivity {
     private DatabaseReference usersDbRef;
     private String hisUid, myUid;
     private String hisImage;
+    private ValueEventListener messagesListener;
 
     private AdapterChat adapterChat;
     private final List<ModelChat> chatList = new ArrayList<>();
 
     private static final int GALLERY_REQUEST_CODE = 400;
     private static final int VIDEO_REQUEST_CODE = 500;
-
-    private Uri imageUri = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +87,7 @@ public class ChatDetailActivity extends AppCompatActivity {
 
         initializeChatRecyclerView();
         initializeTextWatcher();
+        preloadDatabaseConnection();
 
         firebaseAuth = FirebaseAuth.getInstance();
         database = FirebaseDatabase.getInstance();
@@ -114,6 +114,11 @@ public class ChatDetailActivity extends AppCompatActivity {
         }
     }
 
+    private void preloadDatabaseConnection() {
+        DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Dummy");
+        dbRef.setValue("init").addOnCompleteListener(task -> dbRef.removeValue());
+    }
+
     private void initializeChatRecyclerView() {
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         linearLayoutManager.setStackFromEnd(true);
@@ -122,7 +127,7 @@ public class ChatDetailActivity extends AppCompatActivity {
         binding.chatRecyclerView.setAdapter(adapterChat);
         binding.chatRecyclerView.setHasFixedSize(true);
         binding.chatRecyclerView.setLayoutManager(linearLayoutManager);
-
+        binding.chatRecyclerView.setNestedScrollingEnabled(false);
     }
 
     private void initializeTextWatcher() {
@@ -247,12 +252,11 @@ public class ChatDetailActivity extends AppCompatActivity {
 
 
 
-
-
     private void loadMessages() {
         DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Chats");
+        Query chatQuery = dbRef.orderByChild("timestamp").limitToLast(20);
 
-        dbRef.addValueEventListener(new ValueEventListener() {
+        messagesListener = chatQuery.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 chatList.clear();
@@ -275,6 +279,13 @@ public class ChatDetailActivity extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Chats");
+        dbRef.removeEventListener(messagesListener);
+    }
+
     private void pickImageFromGallery() {
         Intent intent = new Intent(Intent.ACTION_PICK);
         intent.setType("image/*");
@@ -292,7 +303,7 @@ public class ChatDetailActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK && data != null) {
             if (requestCode == GALLERY_REQUEST_CODE) {
-                imageUri = data.getData();
+                Uri imageUri = data.getData();
                 sendImageMessage(imageUri);
             } else if (requestCode == VIDEO_REQUEST_CODE) {
                 Uri videoUri = data.getData();
@@ -300,6 +311,7 @@ public class ChatDetailActivity extends AppCompatActivity {
             }
         }
     }
+
 
     private void sendImageMessage(Uri imageUri) {
         String timeStamp = String.valueOf(System.currentTimeMillis());
@@ -481,4 +493,5 @@ public class ChatDetailActivity extends AppCompatActivity {
         super.onStart();
         myUid = firebaseAuth.getCurrentUser().getUid();
     }
+
 }
