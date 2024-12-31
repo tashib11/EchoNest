@@ -58,39 +58,44 @@ public class PeopleFragment extends Fragment {
     }
 
     private void getAllUsers() {
-        //get current user
         FirebaseUser fUser = FirebaseAuth.getInstance().getCurrentUser();
-        //get path of datbase named "Users" containing users info
         DatabaseReference ref = FirebaseDatabase.getInstance().getReference("Users");
-        // get all data from path
         ref.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 userList.clear();
                 for (DataSnapshot ds : snapshot.getChildren()) {
+                    // Fetch user data
                     String userId = ds.child("userId").getValue(String.class);
                     String name = ds.child("name").getValue(String.class);
                     String email = ds.child("email").getValue(String.class);
                     String profilePhoto = ds.child("profilePhoto").getValue(String.class);
                     String coverPhoto = ds.child("coverPhoto").getValue(String.class);
+                    String onlineStatus = ds.child("onlineStatus").getValue(String.class);
+                    String profession = ds.child("profession").getValue(String.class);
+                    int followerCount = ds.child("followerCount").getValue(Integer.class);
 
-
+                    // Exclude current user
                     if (userId != null && !userId.equals(fUser.getUid())) {
-                        ModelUser modelUser = new ModelUser(coverPhoto, profilePhoto, email, null, null, userId, name, null, null, 0);
+                        ModelUser modelUser = new ModelUser(
+                                coverPhoto, profilePhoto, email, null, null,
+                                userId, name, onlineStatus, profession, followerCount
+                        );
                         userList.add(modelUser);
                     }
                 }
+                // Initialize adapter and set to RecyclerView
                 adapterUsers = new AdapterUsers(getActivity(), userList);
                 recyclerView.setAdapter(adapterUsers);
-
-        }
+            }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-
+                // Handle error
             }
         });
     }
+
     private void searchUsers(String query) {
         //get current user
         FirebaseUser fUser = FirebaseAuth.getInstance().getCurrentUser();

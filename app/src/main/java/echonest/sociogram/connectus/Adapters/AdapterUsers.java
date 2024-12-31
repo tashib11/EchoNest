@@ -67,12 +67,13 @@ public class AdapterUsers extends  RecyclerView.Adapter<AdapterUsers.MyHolder> {
         }
 
 
-        String onlineStatus = userList.get(position).getOnlineStatus();
-        if(onlineStatus != null && onlineStatus.equals("online")){
+        String onlineStatus = user.getOnlineStatus();
+        if (onlineStatus != null && onlineStatus.equals("online")) {
             holder.onlineStatusIv.setImageResource(R.drawable.circle_online);
-        }else{
+        } else {
             holder.onlineStatusIv.setImageResource(R.drawable.circle_offline);
         }
+
         // handle item click
         holder.itemView.setOnClickListener(view -> {
             Intent intent = new Intent(context, ChatDetailActivity.class);
