@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -156,27 +157,32 @@ public class ChatsFragment extends Fragment {
                         String sender = chat.getSender();
                         String receiver = chat.getReceiver();
 
-                        if (sender.equals(currentUser.getUid()) || receiver.equals(currentUser.getUid())) {
-                            String chatPartnerId = sender.equals(currentUser.getUid()) ? receiver : sender;
+                        // Check for null values
+                        if (sender != null && receiver != null) {
+                            if (sender.equals(currentUser.getUid()) || receiver.equals(currentUser.getUid())) {
+                                String chatPartnerId = sender.equals(currentUser.getUid()) ? receiver : sender;
 
-                            String lastMessage;
-                            if (chat.getType() != null) {
-                                switch (chat.getType()) {
-                                    case "image":
-                                        lastMessage = "Sent a photo";
-                                        break;
-                                    case "video":
-                                        lastMessage = "Sent a video";
-                                        break;
-                                    default:
-                                        lastMessage = chat.getMessage(); // Default to text message
-                                        break;
+                                String lastMessage;
+                                if (chat.getType() != null) {
+                                    switch (chat.getType()) {
+                                        case "image":
+                                            lastMessage = "Sent a photo";
+                                            break;
+                                        case "video":
+                                            lastMessage = "Sent a video";
+                                            break;
+                                        default:
+                                            lastMessage = chat.getMessage(); // Default to text message
+                                            break;
+                                    }
+                                } else {
+                                    lastMessage = chat.getMessage(); // Handle null or unspecified type
                                 }
-                            } else {
-                                lastMessage = chat.getMessage(); // Handle null or unspecified type
-                            }
 
-                            lastMessageMap.put(chatPartnerId, lastMessage);
+                                lastMessageMap.put(chatPartnerId, lastMessage);
+                            }
+                        } else {
+                            Log.w("loadLastMessages", "Skipping chat: sender or receiver is null. Key: " + ds.getKey());
                         }
                     }
                 }
@@ -186,10 +192,11 @@ public class ChatsFragment extends Fragment {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-              //  Toast.makeText(getContext(), "Failed to load last messages.", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(getContext(), "Failed to load last messages.", Toast.LENGTH_SHORT).show();
             }
         });
     }
+
 
     private void redirectToSignIn() {
         Intent intent = new Intent(getActivity(), SignInActivity.class);
