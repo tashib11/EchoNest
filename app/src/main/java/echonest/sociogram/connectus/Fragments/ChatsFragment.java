@@ -137,7 +137,7 @@ public class ChatsFragment extends Fragment {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(getContext(), "Failed to load users.", Toast.LENGTH_SHORT).show();
+              //  Toast.makeText(getContext(), "Failed to load users.", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -186,7 +186,7 @@ public class ChatsFragment extends Fragment {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(getContext(), "Failed to load last messages.", Toast.LENGTH_SHORT).show();
+              //  Toast.makeText(getContext(), "Failed to load last messages.", Toast.LENGTH_SHORT).show();
             }
         });
     }
