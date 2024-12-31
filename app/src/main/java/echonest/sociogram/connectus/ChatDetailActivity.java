@@ -112,6 +112,13 @@ public class ChatDetailActivity extends AppCompatActivity {
         binding.attachBtnVideo.setOnClickListener(v -> pickVideoFromGallery());
         binding.backArrow.setOnClickListener(v -> finish());
 
+        // Navigate to InboxDetailActivity
+        binding.headbar.setOnClickListener(v -> {
+            Intent intent1 = new Intent(ChatDetailActivity.this, inboxDetailActivity.class);
+            intent1.putExtra("hisUid", hisUid);
+            startActivity(intent1);
+        });
+
     }
 
     private void setStatusBarColor(int colorId) {
@@ -353,10 +360,16 @@ public class ChatDetailActivity extends AppCompatActivity {
                 List<ModelChat> olderMessages = new ArrayList<>();
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     ModelChat chat = ds.getValue(ModelChat.class);
-                    if (chat != null && (
-                            (chat.getReceiver().equals(myUid) && chat.getSender().equals(hisUid)) ||
-                                    (chat.getReceiver().equals(hisUid) && chat.getSender().equals(myUid)))) {
-                        olderMessages.add(chat);
+
+                    // Ensure both sender and receiver are non-null before comparison
+                    if (chat != null && chat.getSender() != null && chat.getReceiver() != null) {
+                        if ((chat.getReceiver().equals(myUid) && chat.getSender().equals(hisUid)) ||
+                                (chat.getReceiver().equals(hisUid) && chat.getSender().equals(myUid))) {
+                            olderMessages.add(chat);
+                        }
+                    } else {
+                        // Log a warning if sender or receiver is null
+                        Log.w("LoadOlderMessages", "Skipping message with null sender/receiver. Key: " + ds.getKey());
                     }
                 }
 
