@@ -3,6 +3,7 @@ package echonest.sociogram.connectus;
 import static com.google.firebase.database.FirebaseDatabase.getInstance;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 
@@ -127,38 +128,46 @@ public class inboxDetailActivity extends AppCompatActivity {
     }
 
     private void deleteConversation() {
-        DatabaseReference chatRef = firebaseDatabase.getReference("Chats");
+        // Create an AlertDialog for confirmation
+        new AlertDialog.Builder(this)
+                .setTitle("Delete Conversation")
+                .setMessage("Are you sure you want to delete this conversation? This action cannot be undone.")
+                .setIcon(R.drawable.baseline_warning_24) // Use a warning icon if available
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    // Perform deletion upon confirmation
+                    DatabaseReference chatRef = firebaseDatabase.getReference("Chats");
+                    chatRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            for (DataSnapshot ds : snapshot.getChildren()) {
+                                String sender = ds.child("sender").getValue(String.class);
+                                String receiver = ds.child("receiver").getValue(String.class);
 
-        // Delete all messages between the current user and the other user
-        chatRef.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                for (DataSnapshot ds : snapshot.getChildren()) {
-                    // Fetch sender and receiver
-                    String sender = ds.child("sender").getValue(String.class);
-                    String receiver = ds.child("receiver").getValue(String.class);
-
-                    // Ensure both sender and receiver are valid strings
-                    if (sender != null && receiver != null) {
-                        if ((sender.equals(hisUid) && receiver.equals(user.getUid())) ||
-                                (sender.equals(user.getUid()) && receiver.equals(hisUid))) {
-                            // Remove the message
-                            ds.getRef().removeValue();
+                                if (sender != null && receiver != null) {
+                                    if ((sender.equals(hisUid) && receiver.equals(user.getUid())) ||
+                                            (sender.equals(user.getUid()) && receiver.equals(hisUid))) {
+                                        ds.getRef().removeValue();
+                                    }
+                                } else {
+                                    Log.w("DeleteConversation", "Skipping message: sender or receiver is null. Key: " + ds.getKey());
+                                }
+                            }
+                            Toast.makeText(inboxDetailActivity.this, "Conversation deleted successfully.", Toast.LENGTH_SHORT).show();
                         }
-                    } else {
-                        // Log details for debugging if sender or receiver is null
-                        Log.w("DeleteConversation", "Skipping message: sender or receiver is null. Key: " + ds.getKey());
-                    }
-                }
-                Toast.makeText(inboxDetailActivity.this, "Successfully delete conversation: " , Toast.LENGTH_SHORT).show();
-            }
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(inboxDetailActivity.this, "Failed to delete conversation: " + error.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+                            Toast.makeText(inboxDetailActivity.this, "Failed to delete conversation: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                })
+                .setNegativeButton("Cancel", (dialog, which) -> {
+                    // Dismiss dialog
+                    dialog.dismiss();
+                })
+                .show();
     }
+
 
     @Override
     public void onBackPressed() {
