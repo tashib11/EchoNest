@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.animation.ObjectAnimator;
 import android.app.ProgressDialog;
@@ -63,6 +64,9 @@ import java.util.Locale;
 
 
 public class ChatDetailActivity extends AppCompatActivity {
+    private boolean isLoadingMoreMessages = false;
+    private String earliestMessageTimestamp = null; // To track the earliest message
+
     private CustomItemAnimator itemAnimator;
     private ActivityChatDetailBinding binding;
     private FirebaseDatabase database;
@@ -128,9 +132,20 @@ public class ChatDetailActivity extends AppCompatActivity {
         binding.chatRecyclerView.setAdapter(adapterChat);
         binding.chatRecyclerView.setHasFixedSize(true);
         binding.chatRecyclerView.setLayoutManager(linearLayoutManager);
-        binding.chatRecyclerView.setNestedScrollingEnabled(false);
 
+        // Add scroll listener for pagination
+        binding.chatRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                if (!binding.chatRecyclerView.canScrollVertically(-1) && !isLoadingMoreMessages) {
+                    // Reached the top, load more messages
+                    loadOlderMessages();
+                }
+            }
+        });
     }
+
 
     private void initializeTextWatcher() {
         binding.messageEt.addTextChangedListener(new TextWatcher() {
@@ -258,7 +273,7 @@ public class ChatDetailActivity extends AppCompatActivity {
         DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Chats");
         Query chatQuery = dbRef.orderByChild("timestamp").limitToLast(20);
 
-        messagesListener = chatQuery.addValueEventListener(new ValueEventListener() {
+        chatQuery.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 chatList.clear();
@@ -270,6 +285,15 @@ public class ChatDetailActivity extends AppCompatActivity {
                         chatList.add(chat);
                     }
                 }
+
+                if (!chatList.isEmpty()) {
+                    // Safely set the earliest timestamp
+                    earliestMessageTimestamp = chatList.get(0).getTimestamp();
+                } else {
+                    // Handle case when there are no messages
+                    earliestMessageTimestamp = null;
+                }
+
                 adapterChat.notifyDataSetChanged();
                 binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
             }
@@ -281,12 +305,64 @@ public class ChatDetailActivity extends AppCompatActivity {
         });
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    private void loadOlderMessages() {
+        if (earliestMessageTimestamp == null) return;
+
+        isLoadingMoreMessages = true;
+
         DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Chats");
-        dbRef.removeEventListener(messagesListener);
+        Query olderMessagesQuery = dbRef.orderByChild("timestamp")
+                .endAt(earliestMessageTimestamp)
+                .limitToLast(20);
+
+        olderMessagesQuery.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                List<ModelChat> olderMessages = new ArrayList<>();
+                for (DataSnapshot ds : snapshot.getChildren()) {
+                    ModelChat chat = ds.getValue(ModelChat.class);
+                    if (chat != null && (
+                            (chat.getReceiver().equals(myUid) && chat.getSender().equals(hisUid)) ||
+                                    (chat.getReceiver().equals(hisUid) && chat.getSender().equals(myUid)))) {
+                        olderMessages.add(chat);
+                    }
+                }
+
+                if (!olderMessages.isEmpty()) {
+                    // Remove the duplicate (earliest message already loaded)
+                    if (earliestMessageTimestamp.equals(olderMessages.get(olderMessages.size() - 1).getTimestamp())) {
+                        olderMessages.remove(olderMessages.size() - 1);
+                    }
+
+                    // Update earliest timestamp
+                    if (!olderMessages.isEmpty()) {
+                        earliestMessageTimestamp = olderMessages.get(0).getTimestamp();
+                    }
+
+                    // Add to the chat list and notify adapter
+                    chatList.addAll(0, olderMessages);
+                    adapterChat.notifyItemRangeInserted(0, olderMessages.size());
+                }
+
+                isLoadingMoreMessages = false;
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                isLoadingMoreMessages = false;
+                Toast.makeText(ChatDetailActivity.this, "Failed to load older messages.", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
+
+
+
+//    @Override
+//    protected void onDestroy() {
+//        super.onDestroy();
+//        DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Chats");
+//        dbRef.removeEventListener(messagesListener);
+//    }
 
     private void pickImageFromGallery() {
         Intent intent = new Intent(Intent.ACTION_PICK);
