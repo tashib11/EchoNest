@@ -25,6 +25,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.signature.ObjectKey;
 import com.example.connectus.R;
 import com.example.connectus.databinding.ActivitySettingsBinding;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -203,22 +204,42 @@ public class SettingsActivity extends AppCompatActivity {
     private void uploadImage() {
         if (imageUri == null || profileOrCover == null) return;
 
+        progressDialog.setMessage("Uploading...");
         progressDialog.show();
+
         String filePath = profileOrCover + "_" + currentUser.getUid();
         StorageReference ref = storageReference.child(filePath);
-        ref.putFile(imageUri).addOnSuccessListener(taskSnapshot -> {
-            ref.getDownloadUrl().addOnSuccessListener(uri -> {
-                HashMap<String, Object> updates = new HashMap<>();
-                updates.put(profileOrCover, uri.toString());
-                databaseReference.child(currentUser.getUid()).updateChildren(updates)
-                        .addOnSuccessListener(unused -> {
-                            progressDialog.dismiss();
-                            Toast.makeText(this, "Image updated", Toast.LENGTH_SHORT).show();
-                        })
-                        .addOnFailureListener(e -> showError("Failed to update database: " + e.getMessage()));
-            });
-        }).addOnFailureListener(e -> showError("Failed to upload image: " + e.getMessage()));
+
+        // Add a listener to track upload progress
+        ref.putFile(imageUri)
+                .addOnSuccessListener(taskSnapshot -> {
+                    ref.getDownloadUrl().addOnSuccessListener(uri -> {
+                        // Update database with the new image URL
+                        HashMap<String, Object> updates = new HashMap<>();
+                        updates.put(profileOrCover, uri.toString());
+                        databaseReference.child(currentUser.getUid()).updateChildren(updates)
+                                .addOnSuccessListener(unused -> {
+                                    progressDialog.dismiss();
+                                    Toast.makeText(this, "Image updated successfully", Toast.LENGTH_SHORT).show();
+
+                                    // Update the ImageView with the new image
+                                    Glide.with(SettingsActivity.this)
+                                            .load(uri.toString())
+                                            .signature(new ObjectKey(System.currentTimeMillis())) // Force Glide to fetch the new image
+                                            .placeholder(R.drawable.avatar) // Loading placeholder
+                                            .into(profileOrCover.equals("profilePhoto") ? binding.avatarIv : binding.coverIv);
+                                })
+                                .addOnFailureListener(e -> showError("Failed to update database: " + e.getMessage()));
+                    });
+                })
+                .addOnFailureListener(e -> showError("Failed to upload image: " + e.getMessage()))
+                .addOnProgressListener(snapshot -> {
+                    // Show upload progress
+                    int progress = (int) (100 * snapshot.getBytesTransferred() / snapshot.getTotalByteCount());
+                    progressDialog.setMessage("Uploading: " + progress + "%");
+                });
     }
+
 
     private void showNameUpdateDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
