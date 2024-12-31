@@ -191,21 +191,25 @@ public class ChatDetailActivity extends AppCompatActivity {
                     binding.nameTv.setText(name);
                     updateUserStatus(onlineStatus);
 
-                    Glide.with(ChatDetailActivity.this)
-                            .load(hisImage.isEmpty() ? R.drawable.avatar : hisImage)
-                            .placeholder(R.drawable.avatar)
-                            .into(binding.profileIv);
+                    if (!isFinishing() && !isDestroyed()) {
+                        Glide.with(ChatDetailActivity.this)
+                                .load(hisImage.isEmpty() ? R.drawable.avatar : hisImage)
+                                .placeholder(R.drawable.avatar)
+                                .into(binding.profileIv);
+                    }
                 }
 
-                // Update adapter with the loaded image
-                adapterChat.updateProfileImage(hisImage);
-                adapterChat.notifyDataSetChanged();
+                if (adapterChat != null) {
+                    adapterChat.updateProfileImage(hisImage);
+                    adapterChat.notifyDataSetChanged();
+                }
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {}
         });
     }
+
 
     private void updateUserStatus(String onlineStatus) {
         if (onlineStatus.equals("online")) {
@@ -299,44 +303,30 @@ public class ChatDetailActivity extends AppCompatActivity {
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     ModelChat chat = ds.getValue(ModelChat.class);
 
-                    if (chat != null) {
-                        String sender = chat.getSender();
-                        String receiver = chat.getReceiver();
-                        String messageStatus = chat.getMessageStatus();
+                    if (chat != null && chat.getSender() != null && chat.getReceiver() != null) {
+                        boolean isChatRelevant = (chat.getReceiver().equals(myUid) && chat.getSender().equals(hisUid)) ||
+                                (chat.getReceiver().equals(hisUid) && chat.getSender().equals(myUid));
 
-                        // Check sender and receiver to avoid null references
-                        if (sender != null && receiver != null) {
-                            // Match the sender and receiver for this chat
-                            boolean isChatRelevant = (receiver.equals(myUid) && sender.equals(hisUid)) ||
-                                    (receiver.equals(hisUid) && sender.equals(myUid));
+                        if (isChatRelevant) {
+                            chatList.add(chat);
 
-                            if (isChatRelevant) {
-                                chatList.add(chat);
-
-                                // Check for message status before updating seen status
-                                if (receiver.equals(myUid) && messageStatus != null && !messageStatus.equals("Seen")) {
-                                    HashMap<String, Object> seenStatusUpdate = new HashMap<>();
-                                    seenStatusUpdate.put("messageStatus", "Seen");
-                                    ds.getRef().updateChildren(seenStatusUpdate);
-                                }
+                            if (chat.getReceiver().equals(myUid) &&
+                                    chat.getMessageStatus() != null &&
+                                    !chat.getMessageStatus().equals("Seen")) {
+                                ds.getRef().child("messageStatus").setValue("Seen");
                             }
-                        } else {
-                            Log.e("ChatDetailActivity", "Null sender or receiver in chat: " + ds.getValue());
                         }
-                    } else {
-                        Log.e("ChatDetailActivity", "Invalid chat object: " + ds.getValue());
                     }
                 }
 
-                // Update earliest timestamp
                 if (!chatList.isEmpty()) {
                     earliestMessageTimestamp = chatList.get(0).getTimestamp();
-                } else {
-                    earliestMessageTimestamp = null;
                 }
 
-                adapterChat.notifyDataSetChanged();
-                binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
+                if (adapterChat != null) {
+                    adapterChat.notifyDataSetChanged();
+                    binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
+                }
             }
 
             @Override
@@ -346,14 +336,15 @@ public class ChatDetailActivity extends AppCompatActivity {
         });
     }
 
+
     private void loadOlderMessages() {
-        if (earliestMessageTimestamp == null) return;
+        if (earliestMessageTimestamp == null || isLoadingMoreMessages) return;
 
         isLoadingMoreMessages = true;
 
         DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Chats");
         Query olderMessagesQuery = dbRef.orderByChild("timestamp")
-                .endAt(earliestMessageTimestamp)
+                .endAt(earliestMessageTimestamp, "timestamp")
                 .limitToLast(20);
 
         olderMessagesQuery.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -370,17 +361,22 @@ public class ChatDetailActivity extends AppCompatActivity {
                 }
 
                 if (!olderMessages.isEmpty()) {
-                    // Remove the duplicate (earliest message already loaded)
+                    // Exclude duplicate of the earliest message if present
                     if (earliestMessageTimestamp.equals(olderMessages.get(olderMessages.size() - 1).getTimestamp())) {
                         olderMessages.remove(olderMessages.size() - 1);
                     }
 
+                    // Update earliest timestamp
                     if (!olderMessages.isEmpty()) {
                         earliestMessageTimestamp = olderMessages.get(0).getTimestamp();
                     }
 
+                    int currentSize = chatList.size();
                     chatList.addAll(0, olderMessages);
                     adapterChat.notifyItemRangeInserted(0, olderMessages.size());
+
+                    // Maintain scroll position
+                    binding.chatRecyclerView.scrollToPosition(olderMessages.size());
                 }
 
                 isLoadingMoreMessages = false;
@@ -393,6 +389,7 @@ public class ChatDetailActivity extends AppCompatActivity {
             }
         });
     }
+
 
 
     @Override
