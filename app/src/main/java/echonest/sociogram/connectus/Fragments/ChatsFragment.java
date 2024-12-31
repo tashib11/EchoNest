@@ -106,7 +106,7 @@ public class ChatsFragment extends Fragment {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(getContext(), "Failed to load chat list.", Toast.LENGTH_SHORT).show();
+             //   Toast.makeText(getContext(), "Failed to load chat list.", Toast.LENGTH_SHORT).show();
             }
         });
     }

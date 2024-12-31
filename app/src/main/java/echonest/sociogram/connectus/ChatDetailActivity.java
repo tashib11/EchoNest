@@ -37,6 +37,8 @@ import android.widget.Toast;
 import com.bumptech.glide.Glide;
 import echonest.sociogram.connectus.Adapters.AdapterChat;
 import echonest.sociogram.connectus.Models.ModelChat;
+import echonest.sociogram.connectus.Models.ModelChatlist;
+
 import com.example.connectus.R;
 import com.example.connectus.databinding.ActivityChatDetailBinding;
 import com.google.android.gms.tasks.Task;
@@ -64,6 +66,7 @@ import java.util.Locale;
 
 
 public class ChatDetailActivity extends AppCompatActivity {
+    private String hisImage = "";
     private boolean isLoadingMoreMessages = false;
     private String earliestMessageTimestamp = null; // To track the earliest message
 
@@ -73,7 +76,7 @@ public class ChatDetailActivity extends AppCompatActivity {
     private FirebaseAuth firebaseAuth;
     private DatabaseReference usersDbRef;
     private String hisUid, myUid;
-    private String hisImage;
+//    private String hisImage;
     private ValueEventListener messagesListener;
 
     private AdapterChat adapterChat;
@@ -99,15 +102,16 @@ public class ChatDetailActivity extends AppCompatActivity {
 
         Intent intent = getIntent();
         hisUid = intent.getStringExtra("hisUid");
+        myUid = firebaseAuth.getCurrentUser().getUid(); // Ensure `myUid` is set
 
         loadUserDetails();
+        loadMessages();
 
         binding.sendbtn.setOnClickListener(v -> sendMessage());
         binding.attachBtn.setOnClickListener(v -> pickImageFromGallery());
         binding.attachBtnVideo.setOnClickListener(v -> pickVideoFromGallery());
         binding.backArrow.setOnClickListener(v -> finish());
 
-        loadMessages();
     }
 
     private void setStatusBarColor(int colorId) {
@@ -128,6 +132,7 @@ public class ChatDetailActivity extends AppCompatActivity {
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         linearLayoutManager.setStackFromEnd(true);
 
+        // Initialize adapter with default or placeholder image
         adapterChat = new AdapterChat(this, chatList, hisImage);
         binding.chatRecyclerView.setAdapter(adapterChat);
         binding.chatRecyclerView.setHasFixedSize(true);
@@ -139,11 +144,12 @@ public class ChatDetailActivity extends AppCompatActivity {
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
                 if (!binding.chatRecyclerView.canScrollVertically(-1) && !isLoadingMoreMessages) {
-                    // Reached the top, load more messages
                     loadOlderMessages();
                 }
             }
         });
+
+        Log.d("ChatDetailActivity", "Chat RecyclerView initialized.");
     }
 
 
@@ -186,10 +192,14 @@ public class ChatDetailActivity extends AppCompatActivity {
                     updateUserStatus(onlineStatus);
 
                     Glide.with(ChatDetailActivity.this)
-                            .load(hisImage)
+                            .load(hisImage.isEmpty() ? R.drawable.avatar : hisImage)
                             .placeholder(R.drawable.avatar)
                             .into(binding.profileIv);
                 }
+
+                // Update adapter with the loaded image
+                adapterChat.updateProfileImage(hisImage);
+                adapterChat.notifyDataSetChanged();
             }
 
             @Override
@@ -216,23 +226,18 @@ public class ChatDetailActivity extends AppCompatActivity {
     private void sendMessage() {
         String message = binding.messageEt.getText().toString().trim();
         if (!TextUtils.isEmpty(message)) {
-            // Create a temporary message object
             String timestamp = String.valueOf(System.currentTimeMillis());
-            ModelChat tempMessage = new ModelChat(message, hisUid, myUid, timestamp, "text", false, null);
 
-            // Add the temporary message to the chat list
+            // Temporary message to update UI
+            ModelChat tempMessage = new ModelChat(
+                    message, hisUid, myUid, timestamp, "text", false, null, "Sending");
+
             chatList.add(tempMessage);
+            adapterChat.notifyItemInserted(chatList.size() - 1);
+            binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
 
-            // Notify the adapter on the main thread
-            runOnUiThread(() -> {
-                adapterChat.notifyItemInserted(chatList.size() - 1);
-                binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
-            });
-
-            // Clear the input field immediately
             binding.messageEt.setText("");
 
-            // Send the message to Firebase in the background
             DatabaseReference chatRef = FirebaseDatabase.getInstance().getReference("Chats");
 
             HashMap<String, Object> messageMap = new HashMap<>();
@@ -242,24 +247,29 @@ public class ChatDetailActivity extends AppCompatActivity {
             messageMap.put("timestamp", timestamp);
             messageMap.put("isSeen", false);
             messageMap.put("type", "text");
+            messageMap.put("messageStatus", "Sending");
 
+            // Push message to Chats node
             chatRef.push().setValue(messageMap).addOnCompleteListener(task -> {
-                if (!task.isSuccessful()) {
-                    // Remove the temporary message if sending fails
-                    chatList.remove(tempMessage);
-                    runOnUiThread(() -> adapterChat.notifyDataSetChanged());
-                    Toast.makeText(this, "Message sending failed", Toast.LENGTH_SHORT).show();
-                } else {
-                    // Add both users to the "Chatlist" node
-                    DatabaseReference chatListRef1 = FirebaseDatabase.getInstance().getReference("Chatlist")
-                            .child(myUid)
-                            .child(hisUid);
-                    chatListRef1.child("id").setValue(hisUid);
+                if (task.isSuccessful()) {
+                    // Add users to Chatlist
+                    addToChatList(myUid, hisUid);
+                    addToChatList(hisUid, myUid);
 
-                    DatabaseReference chatListRef2 = FirebaseDatabase.getInstance().getReference("Chatlist")
-                            .child(hisUid)
-                            .child(myUid);
-                    chatListRef2.child("id").setValue(myUid);
+                    // Update message status to "Sent"
+                    chatRef.orderByChild("timestamp").equalTo(timestamp).addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            for (DataSnapshot ds : snapshot.getChildren()) {
+                                ds.getRef().child("messageStatus").setValue("Sent");
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {}
+                    });
+                } else {
+                    Toast.makeText(ChatDetailActivity.this, "Message sending failed", Toast.LENGTH_SHORT).show();
                 }
             });
         } else {
@@ -267,30 +277,61 @@ public class ChatDetailActivity extends AppCompatActivity {
         }
     }
 
+    // Adds the recipient ID to the Chatlist of the sender
+    private void addToChatList(String senderId, String receiverId) {
+        DatabaseReference chatListRef = FirebaseDatabase.getInstance().getReference("Chatlist").child(senderId);
+        chatListRef.child(receiverId).setValue(new ModelChatlist(receiverId));
+    }
+
+
+
+
 
 
     private void loadMessages() {
         DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Chats");
-        Query chatQuery = dbRef.orderByChild("timestamp").limitToLast(20);
+        Query chatQuery = dbRef.orderByChild("timestamp");
 
-        chatQuery.addListenerForSingleValueEvent(new ValueEventListener() {
+        messagesListener = chatQuery.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 chatList.clear();
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     ModelChat chat = ds.getValue(ModelChat.class);
-                    if (chat != null && (
-                            (chat.getReceiver().equals(myUid) && chat.getSender().equals(hisUid)) ||
-                                    (chat.getReceiver().equals(hisUid) && chat.getSender().equals(myUid)))) {
-                        chatList.add(chat);
+
+                    if (chat != null) {
+                        String sender = chat.getSender();
+                        String receiver = chat.getReceiver();
+                        String messageStatus = chat.getMessageStatus();
+
+                        // Check sender and receiver to avoid null references
+                        if (sender != null && receiver != null) {
+                            // Match the sender and receiver for this chat
+                            boolean isChatRelevant = (receiver.equals(myUid) && sender.equals(hisUid)) ||
+                                    (receiver.equals(hisUid) && sender.equals(myUid));
+
+                            if (isChatRelevant) {
+                                chatList.add(chat);
+
+                                // Check for message status before updating seen status
+                                if (receiver.equals(myUid) && messageStatus != null && !messageStatus.equals("Seen")) {
+                                    HashMap<String, Object> seenStatusUpdate = new HashMap<>();
+                                    seenStatusUpdate.put("messageStatus", "Seen");
+                                    ds.getRef().updateChildren(seenStatusUpdate);
+                                }
+                            }
+                        } else {
+                            Log.e("ChatDetailActivity", "Null sender or receiver in chat: " + ds.getValue());
+                        }
+                    } else {
+                        Log.e("ChatDetailActivity", "Invalid chat object: " + ds.getValue());
                     }
                 }
 
+                // Update earliest timestamp
                 if (!chatList.isEmpty()) {
-                    // Safely set the earliest timestamp
                     earliestMessageTimestamp = chatList.get(0).getTimestamp();
                 } else {
-                    // Handle case when there are no messages
                     earliestMessageTimestamp = null;
                 }
 
@@ -334,12 +375,10 @@ public class ChatDetailActivity extends AppCompatActivity {
                         olderMessages.remove(olderMessages.size() - 1);
                     }
 
-                    // Update earliest timestamp
                     if (!olderMessages.isEmpty()) {
                         earliestMessageTimestamp = olderMessages.get(0).getTimestamp();
                     }
 
-                    // Add to the chat list and notify adapter
                     chatList.addAll(0, olderMessages);
                     adapterChat.notifyItemRangeInserted(0, olderMessages.size());
                 }
@@ -356,13 +395,14 @@ public class ChatDetailActivity extends AppCompatActivity {
     }
 
 
-
-//    @Override
-//    protected void onDestroy() {
-//        super.onDestroy();
-//        DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Chats");
-//        dbRef.removeEventListener(messagesListener);
-//    }
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (messagesListener != null) {
+            DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Chats");
+            dbRef.removeEventListener(messagesListener);
+        }
+    }
 
     private void pickImageFromGallery() {
         Intent intent = new Intent(Intent.ACTION_PICK);
@@ -396,7 +436,7 @@ public class ChatDetailActivity extends AppCompatActivity {
         String fileNameAndPath = "ChatImages/" + timeStamp;
 
         // Declare tempChat inside the method
-        ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "image", false, null);
+        ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "image", false, null,"Sending");
         tempChat.setLocalImageUri(imageUri.toString());
         tempChat.setUploading(true);
         tempChat.setUploadProgress(0);
@@ -446,11 +486,6 @@ public class ChatDetailActivity extends AppCompatActivity {
             }
         }).start();
     }
-
-
-
-
-
 
 
     private Bitmap decodeSampledBitmapFromUri(Uri imageUri, int reqWidth, int reqHeight) throws IOException {
@@ -504,7 +539,7 @@ public class ChatDetailActivity extends AppCompatActivity {
         String filePath = "ChatVideos/" + timeStamp + ".mp4";
 
         // Add a temporary message to the UI with local video URI and uploading state
-        ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "video", false, null);
+        ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "video", false, null,"Sending");
         tempChat.setLocalImageUri(videoUri.toString()); // Set the local video URI
         tempChat.setUploading(true); // Set as uploading
         tempChat.setUploadProgress(0); // Initialize progress to 0

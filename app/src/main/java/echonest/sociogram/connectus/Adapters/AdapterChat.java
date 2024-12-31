@@ -49,7 +49,7 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
     private static final int MSG_TYPE_LEFT = 0;
     private static final int MSG_TYPE_RIGHT = 1;
     private final Context context;
-    private final String imageUrl;
+    private String imageUrl;
     private List<ModelChat> chatList;
     private FirebaseUser fUser;
 
@@ -81,36 +81,28 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
         switch (currentMessage.getType()) {
             case "text":
                 handleTextMessage(holder, currentMessage);
-                holder.messageLayout.setOnLongClickListener(v -> {
-                    showDeleteDialog(position);
-                    return true;
-                });
                 break;
 
             case "image":
                 handleImageMessage(holder, currentMessage);
-                holder.messageIv.setOnLongClickListener(v -> {
-                    showDeleteDialog(position);
-                    return true;
-                });
                 break;
 
             case "video":
                 handleVideoMessage(holder, currentMessage);
-                holder.messageVideoThumbnail.setOnLongClickListener(v -> {
-                    showDeleteDialog(position);
-                    return true;
-                });
                 break;
         }
 
         // Set profile image
         setProfileImage(holder);
 
-        // Set "seen" status
+        // Show message status only for the last message
         if (position == chatList.size() - 1) {
-            holder.isSeenTv.setVisibility(View.VISIBLE);
-            holder.isSeenTv.setText(currentMessage.isSeen() ? "Seen" : "Delivered");
+            if (currentMessage.getSender().equals(fUser.getUid())) {
+                holder.isSeenTv.setVisibility(View.VISIBLE);
+                holder.isSeenTv.setText(currentMessage.getMessageStatus());
+            } else {
+                holder.isSeenTv.setVisibility(View.GONE);
+            }
         } else {
             holder.isSeenTv.setVisibility(View.GONE);
         }
@@ -128,11 +120,10 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
         return chatList.get(position).getSender().equals(fUser.getUid()) ? MSG_TYPE_RIGHT : MSG_TYPE_LEFT;
     }
 
-    public void updateChatList(List<ModelChat> newChatList) {
-        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new ChatDiffCallback(this.chatList, newChatList));
-        this.chatList.clear();
-        this.chatList.addAll(newChatList);
-        diffResult.dispatchUpdatesTo(this);
+    // Method to update the profile image dynamically
+    public void updateProfileImage(String newImageUrl) {
+        this.imageUrl = newImageUrl;
+        notifyDataSetChanged(); // Refresh the RecyclerView
     }
 
     private void resetViewVisibility(MyHolder holder) {

@@ -14,12 +14,15 @@ public class ModelChat {
     int uploadProgress; // Upload progress percentage
     String thumbnailUrl; // URI for video thumbnail during upload
 
+    // Add this field for message status
+    String messageStatus; // "Sending", "Sent", or "Seen"
+
     // Default constructor
     public ModelChat() {
     }
 
     // Constructor for general use
-    public ModelChat(String message, String receiver, String sender, String timestamp, String type, boolean isSeen, String thumbnailUrl) {
+    public ModelChat(String message, String receiver, String sender, String timestamp, String type, boolean isSeen, String thumbnailUrl, String messageStatus) {
         this.message = message;
         this.receiver = receiver;
         this.sender = sender;
@@ -30,20 +33,17 @@ public class ModelChat {
         this.localImageUri = null;
         this.isUploading = false;
         this.uploadProgress = 0;
+        this.messageStatus = messageStatus;
     }
-//    public ModelChat(String message, String receiver, String sender, String timestamp, String type, boolean isSeen) {
-//        this.message = message;
-//        this.receiver = receiver;
-//        this.sender = sender;
-//        this.timestamp = timestamp;
-//        this.type = type;
-//        this.isSeen = isSeen;
-//        this.localImageUri = null;
-//        this.isUploading = false;
-//        this.uploadProgress = 0;
-//
-//    }
 
+    // Getters and setters
+    public String getMessageStatus() {
+        return messageStatus;
+    }
+
+    public void setMessageStatus(String messageStatus) {
+        this.messageStatus = messageStatus;
+    }
 
 
     // Getter and Setter for message
