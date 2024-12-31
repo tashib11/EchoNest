@@ -63,6 +63,7 @@ import java.util.Locale;
 
 
 public class ChatDetailActivity extends AppCompatActivity {
+    private CustomItemAnimator itemAnimator;
     private ActivityChatDetailBinding binding;
     private FirebaseDatabase database;
     private FirebaseAuth firebaseAuth;
@@ -128,6 +129,7 @@ public class ChatDetailActivity extends AppCompatActivity {
         binding.chatRecyclerView.setHasFixedSize(true);
         binding.chatRecyclerView.setLayoutManager(linearLayoutManager);
         binding.chatRecyclerView.setNestedScrollingEnabled(false);
+
     }
 
     private void initializeTextWatcher() {
@@ -368,6 +370,11 @@ public class ChatDetailActivity extends AppCompatActivity {
             }
         }).start();
     }
+
+
+
+
+
 
 
     private Bitmap decodeSampledBitmapFromUri(Uri imageUri, int reqWidth, int reqHeight) throws IOException {

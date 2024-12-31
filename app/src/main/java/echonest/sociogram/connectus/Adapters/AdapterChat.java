@@ -154,10 +154,14 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
 
         if (currentMessage.getLocalImageUri() != null) {
             if (currentMessage.isUploading()) {
-                // Apply dynamic blur and alpha during upload
+                // Calculate blur radius dynamically (min 1, max 25)
+                int blurRadius = 25 - (currentMessage.getUploadProgress() * 25 / 100);
+                blurRadius = Math.max(1, blurRadius); // Avoid 0 or negative blur radius
+
+                // Load the image with dynamic blur and opacity
                 Glide.with(context)
                         .load(currentMessage.getLocalImageUri())
-                        .transform(new jp.wasabeef.glide.transformations.BlurTransformation(25 - (currentMessage.getUploadProgress() / 4))) // Dynamic blur
+                        .transform(new jp.wasabeef.glide.transformations.BlurTransformation(blurRadius)) // Dynamic blur
                         .into(holder.messageIv);
 
                 // Show progress bar and update percentage
@@ -166,6 +170,7 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
                 holder.progressPercentage.setVisibility(View.VISIBLE);
                 holder.progressPercentage.setText(currentMessage.getUploadProgress() + "%");
 
+                // Gradually increase alpha (opacity) of the image
                 holder.messageIv.setAlpha(0.3f + (0.7f * currentMessage.getUploadProgress() / 100));
             } else {
                 // Upload completed - show clean image
@@ -176,7 +181,7 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
 
                 holder.messageIv.setAlpha(1.0f); // Fully opaque
                 holder.progressBar.setVisibility(View.GONE);
-                holder.progressPercentage.setVisibility(View.GONE); // Hide percentage
+                holder.progressPercentage.setVisibility(View.GONE);
             }
         } else if (currentMessage.getMessage() != null) {
             // Display uploaded image
@@ -184,6 +189,7 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
                     .load(currentMessage.getMessage())
                     .placeholder(R.drawable.baseline_image_24)
                     .into(holder.messageIv);
+
             holder.messageIv.setAlpha(1.0f); // Fully opaque
             holder.progressBar.setVisibility(View.GONE);
             holder.progressPercentage.setVisibility(View.GONE);
@@ -325,6 +331,8 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
                 Toast.makeText(context, "Failed to update message", Toast.LENGTH_SHORT).show()
         );
     }
+
+
 
 //    @Override
 //    public void onViewAttachedToWindow(@NonNull MyHolder holder) {
