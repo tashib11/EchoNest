@@ -7,14 +7,19 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import echonest.sociogram.connectus.ChatDetailActivity;
 import echonest.sociogram.connectus.Models.ModelUser;
 import com.example.connectus.R;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.HashMap;
 import java.util.List;
@@ -72,7 +77,48 @@ public class AdapterChatlist extends RecyclerView.Adapter<AdapterChatlist.MyHold
             intent.putExtra("hisUid", hisUid);
             context.startActivity(intent);
         });
+        // Long-click listener for delete chat
+        holder.itemView.setOnLongClickListener(view -> {
+            new AlertDialog.Builder(context)
+                    .setTitle("Delete Chat")
+                    .setMessage("Are you sure you want to delete this chat?")
+                    .setPositiveButton("Delete", (dialog, which) -> {
+                        deleteChat(hisUid, position); // Perform chat deletion
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+            return true;
+        });
     }
+
+    // Method to delete chat from Firebase and update the RecyclerView
+    private void deleteChat(String userId, int position) {
+        String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+        // Reference to the chatlist in Firebase
+        DatabaseReference chatListRef = FirebaseDatabase.getInstance()
+                .getReference("Chatlist")
+                .child(currentUserId)
+                .child(userId);
+
+        // Remove the person only from the Firebase Chatlist
+        chatListRef.removeValue()
+                .addOnSuccessListener(aVoid -> {
+                    // Find and remove the specific user from userList by matching userId
+                    for (int i = 0; i < userList.size(); i++) {
+                        if (userList.get(i).getUserId().equals(userId)) {
+                            userList.remove(i);
+                            notifyItemRemoved(i);
+                            Toast.makeText(context, "Chat deleted", Toast.LENGTH_SHORT).show();
+                            break; // Stop after removing the specific user
+                        }
+                    }
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(context, "Failed to delete chat", Toast.LENGTH_SHORT).show());
+    }
+
+
 
     public void setLastMessageMap(HashMap<String, String> lastMessageMap) {
         this.lastMessageMap = lastMessageMap;
