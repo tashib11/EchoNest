@@ -21,6 +21,7 @@ import com.example.connectus.databinding.ActivitySignInBinding;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
@@ -92,27 +93,49 @@ public class SignInActivity extends AppCompatActivity {
         });
 
     }
-    // tamim a niye jawa baki
 
     private void showRecoverPasswordDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Recover Password");
+        builder.setTitle("Recover Your EchoNest Password");
+
+        // Create a linear layout for the dialog
         LinearLayout linearLayout = new LinearLayout(this);
+        linearLayout.setOrientation(LinearLayout.VERTICAL);
+
+        // Set up TextInputLayout to improve EditText appearance
+        TextInputLayout textInputLayout = new TextInputLayout(this);
+        textInputLayout.setHint("Email Address");
+
         final EditText emailEt = new EditText(this);
-        emailEt.setHint("Email");
         emailEt.setInputType(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
         emailEt.setMinEms(16);
-        linearLayout.addView(emailEt);
-        linearLayout.setPadding(10, 10, 10, 10);
+        emailEt.setPadding(16, 16, 16, 16);
+
+        // Add the EditText inside the TextInputLayout
+        textInputLayout.addView(emailEt);
+
+        // Add the TextInputLayout to the LinearLayout
+        linearLayout.addView(textInputLayout);
+
+        // Set dialog padding
+        linearLayout.setPadding(20, 20, 20, 20);
+
+        // Set the custom layout to the dialog
         builder.setView(linearLayout);
+
         // Recover button
-        builder.setPositiveButton("Recover", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton("Send Recovery Email", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int which) {
                 String email = emailEt.getText().toString().trim();
-                beginRecovery(email);
+                if (!email.isEmpty()) {
+                    beginRecovery(email);
+                } else {
+                    Toast.makeText(SignInActivity.this, "Please enter a valid email address", Toast.LENGTH_SHORT).show();
+                }
             }
         });
+
         // Cancel button
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
@@ -120,28 +143,31 @@ public class SignInActivity extends AppCompatActivity {
                 dialogInterface.dismiss();
             }
         });
+
+        // Show the dialog
         builder.create().show();
     }
 
-
     private void beginRecovery(String email) {
-        progressDialog.setMessage("Sending email...");
+        progressDialog.setMessage("Sending recovery email...");
         progressDialog.show();
+
+        // Firebase password reset logic
         auth.sendPasswordResetEmail(email).addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
                 progressDialog.dismiss();
                 if (task.isSuccessful()) {
-                    Toast.makeText(SignInActivity.this, "Email sent", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SignInActivity.this, "Recovery email sent! Please check your inbox.", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(SignInActivity.this, "Try again", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SignInActivity.this, "Failed to send email. Please try again.", Toast.LENGTH_SHORT).show();
                 }
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
                 progressDialog.dismiss();
-                Toast.makeText(SignInActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(SignInActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
