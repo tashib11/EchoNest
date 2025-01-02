@@ -5,6 +5,7 @@ import static com.google.firebase.database.FirebaseDatabase.getInstance;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 
 import android.content.Intent;
@@ -37,7 +38,8 @@ public class inboxDetailActivity extends AppCompatActivity {
     FirebaseDatabase firebaseDatabase;
     DatabaseReference databaseReference;
     StorageReference storageReference;
-    String hisUid;
+    String hisUid, myUid;
+    FirebaseDatabase database;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,10 +72,101 @@ public class inboxDetailActivity extends AppCompatActivity {
         } else {
             Toast.makeText(this, "No user ID passed.", Toast.LENGTH_SHORT).show();
         }
-
+        database = FirebaseDatabase.getInstance();
+        myUid = FirebaseAuth.getInstance().getCurrentUser().getUid();
         // Set up delete button click listener
         binding.deleteButton.setOnClickListener(v -> deleteConversation());
+        binding.blockButton.setOnClickListener(v -> toggleBlockUser());
+
+
     }
+
+    private void toggleBlockUser() {
+        DatabaseReference blockRef = database.getReference("BlockedUsers");
+
+        blockRef.child(myUid).child(hisUid).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    // Check if the current user initiated the block
+                    String blockInitiator = snapshot.getValue(String.class);
+
+                    if (blockInitiator != null && blockInitiator.equals("blocked_by_" + myUid)) {
+                        // Allow unblocking
+                        blockRef.child(myUid).child(hisUid).removeValue();
+                        blockRef.child(hisUid).child(myUid).removeValue();
+
+                        // Update UI
+                        binding.blockButton.setText("Block");
+                        binding.blockButton.setBackgroundTintList(ContextCompat.getColorStateList(inboxDetailActivity.this, R.color.black));
+
+                        Toast.makeText(inboxDetailActivity.this, "User unblocked", Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Other user cannot unblock
+                        Toast.makeText(inboxDetailActivity.this, "You cannot unblock this user", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    // No block exists, proceed to block
+                    blockRef.child(myUid).child(hisUid).setValue("blocked_by_" + myUid);
+                    blockRef.child(hisUid).child(myUid).setValue("blocked_by_" + myUid);
+
+                    // Update UI
+                    binding.blockButton.setText("Unblock");
+                    binding.blockButton.setBackgroundTintList(ContextCompat.getColorStateList(inboxDetailActivity.this, R.color.black));
+
+                    Toast.makeText(inboxDetailActivity.this, "User blocked", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(inboxDetailActivity.this, "Failed to toggle block status.", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+
+    private void updateBlockButtonUI() {
+        DatabaseReference blockRef = database.getReference("BlockedUsers");
+
+        blockRef.child(myUid).child(hisUid).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    String blockInitiator = snapshot.getValue(String.class);
+
+                    if (blockInitiator != null && blockInitiator.equals("blocked_by_" + myUid)) {
+                        // Current user initiated the block
+                        binding.blockButton.setText("Unblock");
+                        binding.blockButton.setBackgroundTintList(ContextCompat.getColorStateList(inboxDetailActivity.this, R.color.black));
+                    } else {
+                        // Current user is blocked by the other user, show "Blocked"
+                        binding.blockButton.setText("Blocked");
+                        binding.blockButton.setEnabled(false);
+                        binding.blockButton.setBackgroundTintList(ContextCompat.getColorStateList(inboxDetailActivity.this, R.color.red));
+                    }
+                } else {
+                    // No block exists
+                    binding.blockButton.setText("Block");
+                    binding.blockButton.setEnabled(true);
+                    binding.blockButton.setBackgroundTintList(ContextCompat.getColorStateList(inboxDetailActivity.this, R.color.black));
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(inboxDetailActivity.this, "Failed to load block status.", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateBlockButtonUI(); // Update button state whenever activity resumes
+    }
+
 
     private void fetchUserData(String hisUid) {
         DatabaseReference userRef = databaseReference.child(hisUid);
@@ -167,6 +260,7 @@ public class inboxDetailActivity extends AppCompatActivity {
                 })
                 .show();
     }
+
 
 
     @Override

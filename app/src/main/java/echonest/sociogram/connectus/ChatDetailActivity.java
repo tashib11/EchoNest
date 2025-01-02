@@ -235,6 +235,26 @@ public class ChatDetailActivity extends AppCompatActivity {
     }
 
     private void sendMessage() {
+        DatabaseReference blockRef = database.getReference("BlockedUsers");
+
+        blockRef.child(myUid).child(hisUid).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    Toast.makeText(ChatDetailActivity.this, "You cannot send messages to this user.", Toast.LENGTH_SHORT).show();
+                } else {
+                    proceedToSendMessage();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(ChatDetailActivity.this, "Failed to check block status.", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void proceedToSendMessage() {
         String message = binding.messageEt.getText().toString().trim();
         if (!TextUtils.isEmpty(message)) {
             String timestamp = String.valueOf(System.currentTimeMillis());
@@ -263,11 +283,9 @@ public class ChatDetailActivity extends AppCompatActivity {
             // Push message to Chats node
             chatRef.push().setValue(messageMap).addOnCompleteListener(task -> {
                 if (task.isSuccessful()) {
-                    // Add users to Chatlist
                     addToChatList(myUid, hisUid);
                     addToChatList(hisUid, myUid);
 
-                    // Update message status to "Sent"
                     chatRef.orderByChild("timestamp").equalTo(timestamp).addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -287,6 +305,7 @@ public class ChatDetailActivity extends AppCompatActivity {
             Toast.makeText(this, "Cannot send an empty message", Toast.LENGTH_SHORT).show();
         }
     }
+
 
     // Adds the recipient ID to the Chatlist of the sender
     private void addToChatList(String senderId, String receiverId) {
