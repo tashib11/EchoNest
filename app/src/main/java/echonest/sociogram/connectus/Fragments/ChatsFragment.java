@@ -150,6 +150,7 @@ public class ChatsFragment extends Fragment {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 HashMap<String, String> lastMessageMap = new HashMap<>();
+                HashMap<String, Long> lastMessageTimestampMap = new HashMap<>(); // Map for timestamps
 
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     ModelChat chat = ds.getValue(ModelChat.class);
@@ -179,15 +180,16 @@ public class ChatsFragment extends Fragment {
                                     lastMessage = chat.getMessage(); // Handle null or unspecified type
                                 }
 
+                                long timestamp = Long.parseLong(chat.getTimestamp()); // Get the timestamp of the message
                                 lastMessageMap.put(chatPartnerId, lastMessage);
+                                lastMessageTimestampMap.put(chatPartnerId, timestamp); // Save timestamp
                             }
-                        } else {
-                            Log.w("loadLastMessages", "Skipping chat: sender or receiver is null. Key: " + ds.getKey());
                         }
                     }
                 }
 
                 adapterChatlist.setLastMessageMap(lastMessageMap);
+                adapterChatlist.setLastMessageTimestampMap(lastMessageTimestampMap); // Pass timestamps to adapter
             }
 
             @Override
@@ -196,6 +198,7 @@ public class ChatsFragment extends Fragment {
             }
         });
     }
+
 
 
     private void redirectToSignIn() {

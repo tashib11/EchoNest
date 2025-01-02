@@ -21,6 +21,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -29,11 +30,28 @@ public class AdapterChatlist extends RecyclerView.Adapter<AdapterChatlist.MyHold
     Context context;
     List<ModelUser> userList;
     private HashMap<String, String> lastMessageMap;
+    private HashMap<String, Long> lastMessageTimestampMap; // New map for timestamps
 
     public AdapterChatlist(Context context, List<ModelUser> userList) {
         this.context = context;
         this.userList = userList;
         this.lastMessageMap = new HashMap<>();
+        this.lastMessageTimestampMap = new HashMap<>();
+    }
+    // Method to set timestamps for the last messages
+    public void setLastMessageTimestampMap(HashMap<String, Long> lastMessageTimestampMap) {
+        this.lastMessageTimestampMap = lastMessageTimestampMap;
+        sortChatList(); // Sort the chat list whenever new timestamps are set
+        notifyDataSetChanged();
+    }
+
+    // Sort userList based on timestamps
+    private void sortChatList() {
+        Collections.sort(userList, (user1, user2) -> {
+            Long timestamp1 = lastMessageTimestampMap.getOrDefault(user1.getUserId(), 0L);
+            Long timestamp2 = lastMessageTimestampMap.getOrDefault(user2.getUserId(), 0L);
+            return Long.compare(timestamp2, timestamp1); // Sort in descending order
+        });
     }
 
     @NonNull
