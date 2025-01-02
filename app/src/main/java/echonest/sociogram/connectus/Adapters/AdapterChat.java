@@ -106,8 +106,29 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
         } else {
             holder.isSeenTv.setVisibility(View.GONE);
         }
-    }
 
+        // Add long-click listener to message layout for text messages
+        holder.messageLayout.setOnLongClickListener(v -> {
+            showDeleteDialog(position); // Show delete dialog
+            return true; // Indicate the event was handled
+        });
+
+        // Add long-click listener for image messages
+        if ("image".equals(currentMessage.getType())) {
+            holder.messageIv.setOnLongClickListener(v -> {
+                showDeleteDialog(position); // Show delete dialog
+                return true; // Indicate the event was handled
+            });
+        }
+
+        // Add long-click listener for video messages
+        if ("video".equals(currentMessage.getType())) {
+            holder.messageVideoThumbnail.setOnLongClickListener(v -> {
+                showDeleteDialog(position); // Show delete dialog
+                return true; // Indicate the event was handled
+            });
+        }
+    }
 
     @Override
     public int getItemCount() {
@@ -261,8 +282,8 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
 
     private void showDeleteDialog(int position) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("Delete Message")
-                .setMessage("Are you sure you want to delete this message?")
+        builder.setTitle("Confirm Deletion")
+                .setMessage("Are you certain you want to delete this message? This action cannot be undone.")
                 .setPositiveButton("Delete", (dialog, which) -> deleteMessage(position))
                 .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
                 .create()
@@ -282,60 +303,45 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
                     if (Objects.equals(ds.child("sender").getValue(), myUID)) {
                         String messageType = ds.child("type").getValue(String.class);
                         if ("image".equals(messageType) || "video".equals(messageType)) {
-                            // Delete the image or video URL from Firebase Storage
                             String mediaUrl = ds.child("message").getValue(String.class);
                             if (mediaUrl != null) {
                                 StorageReference storageRef = FirebaseStorage.getInstance().getReferenceFromUrl(mediaUrl);
                                 storageRef.delete().addOnSuccessListener(unused -> {
-                                    // Update message in the database
+                                    // Update the message in the database
                                     updateDeletedMessage(ds.getRef());
                                 }).addOnFailureListener(e -> {
-                                    Toast.makeText(context, "Failed to delete media file", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(context, "Failed to delete the media file. Please try again.", Toast.LENGTH_SHORT).show();
                                 });
                             } else {
                                 updateDeletedMessage(ds.getRef());
                             }
                         } else {
-                            // For text messages
+                            // Handle text message deletion
                             updateDeletedMessage(ds.getRef());
                         }
                     } else {
-                        Toast.makeText(context, "You can delete only your message", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(context, "You can only delete messages you have sent.", Toast.LENGTH_SHORT).show();
                     }
                 }
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Log.e("Delete Message", "Error deleting message", error.toException());
+                Log.e("Delete Message", "An error occurred while attempting to delete the message.", error.toException());
             }
         });
     }
 
     private void updateDeletedMessage(DatabaseReference messageRef) {
         HashMap<String, Object> hashMap = new HashMap<>();
-        hashMap.put("message", "This message was deleted");
-        hashMap.put("type", "text"); // Update type to text
+        hashMap.put("message", "This message has been deleted.");
+        hashMap.put("type", "text"); // Update type to indicate the message is deleted
         messageRef.updateChildren(hashMap).addOnSuccessListener(unused ->
-                Toast.makeText(context, "Message deleted", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Message deleted successfully.", Toast.LENGTH_SHORT).show()
         ).addOnFailureListener(e ->
-                Toast.makeText(context, "Failed to update message", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Failed to update the message. Please try again.", Toast.LENGTH_SHORT).show()
         );
     }
-
-
-
-//    @Override
-//    public void onViewAttachedToWindow(@NonNull MyHolder holder) {
-//        super.onViewAttachedToWindow(holder);
-//        holder.itemView.setTranslationY(holder.itemView.getHeight()); // Start below
-//        holder.itemView.animate()
-//                .translationY(0)  // Animate to normal position
-//                .setDuration(100) // Duration of the animation
-//                .setInterpolator(new DecelerateInterpolator()) // Smooth animation
-//                .start();
-//    }
-
 
 
     static class MyHolder extends RecyclerView.ViewHolder {
