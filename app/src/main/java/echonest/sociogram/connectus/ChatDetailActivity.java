@@ -66,6 +66,11 @@ import java.util.Locale;
 
 
 public class ChatDetailActivity extends AppCompatActivity {
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkBlockStatus(); // Recheck the block status when the activity resumes
+    }
     private String hisImage = "";
     private boolean isLoadingMoreMessages = false;
     private String earliestMessageTimestamp = null; // To track the earliest message
@@ -76,7 +81,7 @@ public class ChatDetailActivity extends AppCompatActivity {
     private FirebaseAuth firebaseAuth;
     private DatabaseReference usersDbRef;
     private String hisUid, myUid;
-//    private String hisImage;
+    //    private String hisImage;
     private ValueEventListener messagesListener;
 
     private AdapterChat adapterChat;
@@ -104,6 +109,8 @@ public class ChatDetailActivity extends AppCompatActivity {
         hisUid = intent.getStringExtra("hisUid");
         myUid = firebaseAuth.getCurrentUser().getUid(); // Ensure `myUid` is set
 
+        // Check block status early
+        checkBlockStatus();
         loadUserDetails();
         loadMessages();
 
@@ -119,6 +126,48 @@ public class ChatDetailActivity extends AppCompatActivity {
             startActivity(intent1);
         });
 
+    }
+
+    private void checkBlockStatus() {
+        DatabaseReference blockRef = database.getReference("BlockedUsers");
+
+        // Check if `hisUid` is blocked by `myUid` (Person A has blocked Person B)
+        blockRef.child(myUid).child(hisUid).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    // Blocker View
+                    binding.chatLayout.setVisibility(View.GONE);
+
+                } else {
+                    // Check if `myUid` is blocked by `hisUid` (Person B is blocked by Person A)
+                    blockRef.child(hisUid).child(myUid).addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            if (snapshot.exists()) {
+                                // Blocked View
+                                binding.chatLayout.setVisibility(View.GONE);
+
+                            } else {
+                                // Normal Chat View
+                                binding.chatLayout.setVisibility(View.VISIBLE);
+
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+                            Toast.makeText(ChatDetailActivity.this, "Failed to check block status.", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(ChatDetailActivity.this, "Failed to check block status.", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void setStatusBarColor(int colorId) {
@@ -640,5 +689,6 @@ public class ChatDetailActivity extends AppCompatActivity {
         super.onStart();
         myUid = firebaseAuth.getCurrentUser().getUid();
     }
+
 
 }

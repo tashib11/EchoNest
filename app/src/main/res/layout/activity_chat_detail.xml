@@ -70,23 +70,26 @@
                 android:layout_gravity="end"
                 android:contentDescription="Settings"
                 android:src="@drawable/menu_vertical"
+                android:paddingTop="10dp"
                />
         </LinearLayout>
     </androidx.appcompat.widget.Toolbar>
 
 
     <!-- RecyclerView for Chat Messages -->
+
+    <!-- Chat Input Layout -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/chatRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@id/chatLayout"
-        android:padding="8dp"
+        android:layout_marginBottom="0dp"
+        android:background="#121212"
         android:clipToPadding="false"
         android:overScrollMode="never"
-        android:background="#121212" />
+        android:padding="8dp" />
 
-    <!-- Chat Input Layout -->
     <RelativeLayout
         android:id="@+id/chatLayout"
         android:layout_width="match_parent"

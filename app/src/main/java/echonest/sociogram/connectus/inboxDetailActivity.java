@@ -31,6 +31,12 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
 public class inboxDetailActivity extends AppCompatActivity {
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateBlockButtonUI(); // Update button state whenever activity resumes
+    }
+
     ActivityInboxDetailBinding binding;
     FirebaseAuth firebaseAuth;
     FirebaseUser user;
@@ -112,7 +118,7 @@ public class inboxDetailActivity extends AppCompatActivity {
 
                     // Update UI
                     binding.blockButton.setText("Unblock");
-                    binding.blockButton.setBackgroundTintList(ContextCompat.getColorStateList(inboxDetailActivity.this, R.color.black));
+                    binding.blockButton.setBackgroundTintList(ContextCompat.getColorStateList(inboxDetailActivity.this, R.color.red));
 
                     Toast.makeText(inboxDetailActivity.this, "User blocked", Toast.LENGTH_SHORT).show();
                 }
@@ -138,7 +144,7 @@ public class inboxDetailActivity extends AppCompatActivity {
                     if (blockInitiator != null && blockInitiator.equals("blocked_by_" + myUid)) {
                         // Current user initiated the block
                         binding.blockButton.setText("Unblock");
-                        binding.blockButton.setBackgroundTintList(ContextCompat.getColorStateList(inboxDetailActivity.this, R.color.black));
+                        binding.blockButton.setBackgroundTintList(ContextCompat.getColorStateList(inboxDetailActivity.this, R.color.red));
                     } else {
                         // Current user is blocked by the other user, show "Blocked"
                         binding.blockButton.setText("Blocked");
@@ -161,11 +167,6 @@ public class inboxDetailActivity extends AppCompatActivity {
     }
 
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        updateBlockButtonUI(); // Update button state whenever activity resumes
-    }
 
 
     private void fetchUserData(String hisUid) {
