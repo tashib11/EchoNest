@@ -216,7 +216,7 @@ public class inboxDetailActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-            //    Toast.makeText(inboxDetailActivity.this, "Failed to fetch data: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                //    Toast.makeText(inboxDetailActivity.this, "Failed to fetch data: " + error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -237,16 +237,16 @@ public class inboxDetailActivity extends AppCompatActivity {
                                 String sender = ds.child("sender").getValue(String.class);
                                 String receiver = ds.child("receiver").getValue(String.class);
 
+                                // Only remove messages sent by the current user
                                 if (sender != null && receiver != null) {
-                                    if ((sender.equals(hisUid) && receiver.equals(user.getUid())) ||
-                                            (sender.equals(user.getUid()) && receiver.equals(hisUid))) {
-                                        ds.getRef().removeValue();
+                                    if (sender.equals(myUid) && receiver.equals(hisUid)) {
+                                        ds.getRef().removeValue(); // Delete message only from your side
                                     }
                                 } else {
                                     Log.w("DeleteConversation", "Skipping message: sender or receiver is null. Key: " + ds.getKey());
                                 }
                             }
-                            Toast.makeText(inboxDetailActivity.this, "Conversation deleted successfully.", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(inboxDetailActivity.this, "Own conversation deleted successfully.", Toast.LENGTH_SHORT).show();
                         }
 
                         @Override
@@ -261,6 +261,7 @@ public class inboxDetailActivity extends AppCompatActivity {
                 })
                 .show();
     }
+
 
 
 
