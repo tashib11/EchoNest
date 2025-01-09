@@ -225,7 +225,7 @@ public class inboxDetailActivity extends AppCompatActivity {
         // Create an AlertDialog for confirmation
         new AlertDialog.Builder(this)
                 .setTitle("Delete Conversation")
-                .setMessage("Are you sure you want to delete this conversation? This action cannot be undone.")
+                .setMessage("Are you sure you want to delete own conversation?")
                 .setIcon(R.drawable.baseline_warning_24) // Use a warning icon if available
                 .setPositiveButton("Delete", (dialog, which) -> {
                     // Perform deletion upon confirmation
