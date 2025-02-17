@@ -13,6 +13,8 @@ import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -31,9 +33,15 @@ public class FullScreenImageActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_full_screen_image);
 
+        Window window = this.getWindow();
+        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+        ((Window) window).setStatusBarColor(this.getResources().getColor(R.color.black));
+
+
         ImageView fullScreenImageView = findViewById(R.id.fullScreenImageView);
         Button downloadButton = findViewById(R.id.downloadButton);
-
+        ImageView backArrow = findViewById(R.id.backArrow);
         // Get the image URL from the intent
         String imageUrl = getIntent().getStringExtra("image_url");
 
@@ -52,6 +60,10 @@ public class FullScreenImageActivity extends AppCompatActivity {
             } else {
                 Toast.makeText(this, "Image URL is invalid", Toast.LENGTH_SHORT).show();
             }
+        });
+
+        backArrow.setOnClickListener(v -> {
+            finish();
         });
     }
 

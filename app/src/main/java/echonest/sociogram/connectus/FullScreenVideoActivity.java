@@ -3,6 +3,8 @@ package echonest.sociogram.connectus;
 
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.Window;
+import android.view.WindowManager;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -19,6 +21,11 @@ public class FullScreenVideoActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_full_screen_video);
+        Window window = this.getWindow();
+        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+        ((Window) window).setStatusBarColor(this.getResources().getColor(R.color.black));
+
 
         // Retrieve the video URL
         String videoUrl = getIntent().getStringExtra("videoUrl");
