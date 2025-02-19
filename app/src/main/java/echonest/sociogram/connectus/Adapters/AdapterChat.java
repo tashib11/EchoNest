@@ -2,6 +2,7 @@ package echonest.sociogram.connectus.Adapters;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -17,6 +18,7 @@ import android.widget.VideoView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -158,7 +160,15 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
 
     private void handleTextMessage(MyHolder holder, ModelChat currentMessage) {
         holder.messageTv.setVisibility(View.VISIBLE);
-        holder.messageTv.setText(currentMessage.getMessage());
+        if ("[Encrypted Message]".equals(currentMessage.getMessage()) || "[Decryption Failed]".equals(currentMessage.getMessage())) {
+            holder.messageTv.setText("🔒 " + currentMessage.getMessage()); // Add lock icon
+            holder.messageTv.setTypeface(null, Typeface.ITALIC);
+            holder.messageTv.setTextColor(ContextCompat.getColor(context, R.color.gray));
+        } else {
+            holder.messageTv.setText(currentMessage.getMessage());
+            holder.messageTv.setTypeface(null, Typeface.NORMAL);
+            holder.messageTv.setTextColor(ContextCompat.getColor(context, R.color.black));
+        }
     }
 
     private void handleImageMessage(MyHolder holder, ModelChat currentMessage) {
@@ -281,67 +291,63 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
     }
 
     private void showDeleteDialog(int position) {
+        ModelChat message = chatList.get(position);
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("Confirm Deletion")
-                .setMessage("Are you certain you want to delete this message? This action cannot be undone.")
-                .setPositiveButton("Delete", (dialog, which) -> deleteMessage(position))
-                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
-                .create()
+        builder.setTitle("Delete Message")
+                .setMessage("Delete this message?")
+                .setPositiveButton("Delete", (d, w) -> deleteMessage(message))
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 
-    private void deleteMessage(int position) {
-        String myUID = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid();
-        String msgTimeStamp = chatList.get(position).getTimestamp();
-        DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Chats");
+    private void deleteMessage(ModelChat message) {
+        String currentUserUid = FirebaseAuth.getInstance().getUid();
+        if (message == null || !message.getSender().equals(currentUserUid)) {
+            Toast.makeText(context, "Can't delete others' messages", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        Query query = dbRef.orderByChild("timestamp").equalTo(msgTimeStamp);
-        query.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                for (DataSnapshot ds : snapshot.getChildren()) {
-                    if (Objects.equals(ds.child("sender").getValue(), myUID)) {
-                        String messageType = ds.child("type").getValue(String.class);
-                        if ("image".equals(messageType) || "video".equals(messageType)) {
-                            String mediaUrl = ds.child("message").getValue(String.class);
-                            if (mediaUrl != null) {
-                                StorageReference storageRef = FirebaseStorage.getInstance().getReferenceFromUrl(mediaUrl);
-                                storageRef.delete().addOnSuccessListener(unused -> {
-                                    // Update the message in the database
-                                    updateDeletedMessage(ds.getRef());
-                                }).addOnFailureListener(e -> {
-                                    Toast.makeText(context, "Failed to delete the media file. Please try again.", Toast.LENGTH_SHORT).show();
-                                });
-                            } else {
-                                updateDeletedMessage(ds.getRef());
-                            }
-                        } else {
-                            // Handle text message deletion
-                            updateDeletedMessage(ds.getRef());
-                        }
-                    } else {
-                        Toast.makeText(context, "You can only delete messages you have sent.", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            }
+        DatabaseReference messageRef = FirebaseDatabase.getInstance()
+                .getReference("Chats")
+                .child(message.getMessageId());
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Log.e("Delete Message", "An error occurred while attempting to delete the message.", error.toException());
+        if (message.getType().equals("image") || message.getType().equals("video")) {
+            // Delete media from Storage
+            StorageReference storageRef = FirebaseStorage.getInstance()
+                    .getReferenceFromUrl(message.getMessage());
+            storageRef.delete().addOnSuccessListener(unused -> {
+                deleteFromDatabase(messageRef);
+            }).addOnFailureListener(e -> {
+                Toast.makeText(context, "Media delete failed", Toast.LENGTH_SHORT).show();
+            });
+        } else {
+            deleteFromDatabase(messageRef);
+        }
+    }
+
+    private void deleteFromDatabase(DatabaseReference messageRef) {
+        messageRef.removeValue().addOnSuccessListener(unused -> {
+            // Remove from local list
+            int position = chatList.indexOf(messageRef);
+            if (position != -1) {
+                chatList.remove(position);
+                notifyItemRemoved(position);
             }
+        }).addOnFailureListener(e -> {
+            Toast.makeText(context, "Delete failed", Toast.LENGTH_SHORT).show();
         });
     }
 
-    private void updateDeletedMessage(DatabaseReference messageRef) {
-        HashMap<String, Object> hashMap = new HashMap<>();
-        hashMap.put("message", "This message has been deleted.");
-        hashMap.put("type", "text"); // Update type to indicate the message is deleted
-        messageRef.updateChildren(hashMap).addOnSuccessListener(unused ->
-                Toast.makeText(context, "Message deleted successfully.", Toast.LENGTH_SHORT).show()
-        ).addOnFailureListener(e ->
-                Toast.makeText(context, "Failed to update the message. Please try again.", Toast.LENGTH_SHORT).show()
-        );
-    }
+//    private void updateDeletedMessage(DatabaseReference messageRef) {
+//        HashMap<String, Object> hashMap = new HashMap<>();
+//        hashMap.put("message", "This message has been deleted.");
+//        hashMap.put("type", "text"); // Update type to indicate the message is deleted
+//        messageRef.updateChildren(hashMap).addOnSuccessListener(unused ->
+//                Toast.makeText(context, "Message deleted successfully.", Toast.LENGTH_SHORT).show()
+//        ).addOnFailureListener(e ->
+//                Toast.makeText(context, "Failed to update the message. Please try again.", Toast.LENGTH_SHORT).show()
+//        );
+//    }
 
 
     static class MyHolder extends RecyclerView.ViewHolder {

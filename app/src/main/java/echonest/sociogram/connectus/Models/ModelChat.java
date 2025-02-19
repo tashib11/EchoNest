@@ -5,7 +5,7 @@ import java.util.Calendar;
 import java.util.Locale;
 
 public class ModelChat {
-    String message, receiver, sender, timestamp, type;
+    String message, receiver, sender, timestamp, type, aesKey, messageId;
     boolean isSeen;
 
     // Additional fields for image and video uploading
@@ -22,7 +22,7 @@ public class ModelChat {
     }
 
     // Constructor for general use
-    public ModelChat(String message, String receiver, String sender, String timestamp, String type, boolean isSeen, String thumbnailUrl, String messageStatus) {
+    public ModelChat(String message, String receiver, String sender, String timestamp, String type, boolean isSeen, String thumbnailUrl, String messageStatus, String aesKey) {
         this.message = message;
         this.receiver = receiver;
         this.sender = sender;
@@ -34,6 +34,7 @@ public class ModelChat {
         this.isUploading = false;
         this.uploadProgress = 0;
         this.messageStatus = messageStatus;
+        this.aesKey = aesKey; // Initialize aesKey
     }
 
     // Getters and setters
@@ -147,6 +148,16 @@ public class ModelChat {
             return "";
         }
     }
+    // Getter for aesKey
+    public String getAesKey() {
+        return aesKey;
+    }
 
-
+    // Setter for aesKey
+    public void setAesKey(String aesKey) {
+        this.aesKey = aesKey;
+    }
+    // Add getter and setter
+    public String getMessageId() { return messageId; }
+    public void setMessageId(String messageId) { this.messageId = messageId; }
 }

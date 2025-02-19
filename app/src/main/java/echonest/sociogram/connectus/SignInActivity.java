@@ -7,9 +7,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
+import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.EditText;
@@ -24,8 +26,13 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
+import com.google.firebase.auth.FirebaseAuthInvalidUserException;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class SignInActivity extends AppCompatActivity {
     ActivitySignInBinding binding;
@@ -63,16 +70,29 @@ public class SignInActivity extends AppCompatActivity {
             progressDialog.show();
             auth.signInWithEmailAndPassword(binding.etEmail.getText().toString(),
                     binding.etPassword.getText().toString()).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+
                 @Override
                 public void onComplete(@NonNull Task<AuthResult> task) {
                     progressDialog.dismiss();
                     if (task.isSuccessful()) {
+                        String userId = auth.getCurrentUser().getUid();
+                        // Check if private key exists locally
+                        SharedPreferences prefs = getSharedPreferences("secure_prefs", MODE_PRIVATE);
+                        String privateKeyStr = prefs.getString("privateKey", null);
+
+                        if (privateKeyStr == null) {
+                            Toast.makeText(SignInActivity.this, "Private key not found! You may need to restore backup.", Toast.LENGTH_LONG).show();
+                            return;
+                            }
+
                         Intent intent = new Intent(SignInActivity.this, MainActivity.class);
                         startActivity(intent);
+                        finish();
                     } else {
                         Toast.makeText(SignInActivity.this, "Email or password invalid", Toast.LENGTH_SHORT).show();
                     }
-                }
+
+            }
             });
         });
 
@@ -84,12 +104,15 @@ public class SignInActivity extends AppCompatActivity {
         // Create a new account
 
         binding.btnCreateAcc.setOnClickListener(view -> {
-            Intent intent = new Intent("com.facebookapp.SIGN_UP");
-            if (intent.resolveActivity(getPackageManager()) != null) {
-                startActivity(intent);
-            } else {
-                Toast.makeText(this, "Sociogram app is not installed or cannot handle this action", Toast.LENGTH_SHORT).show();
-            }
+            Intent intent = new Intent(SignInActivity.this, SignUpActivity.class);
+            startActivity(intent);
+            finish();
+//            Intent intent = new Intent("com.facebookapp.SIGN_UP");
+//            if (intent.resolveActivity(getPackageManager()) != null) {
+//                startActivity(intent);
+//            } else {
+//                Toast.makeText(this, "Sociogram app is not installed or cannot handle this action", Toast.LENGTH_SHORT).show();
+//            }
         });
 
     }

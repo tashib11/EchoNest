@@ -10,6 +10,7 @@ import android.animation.ObjectAnimator;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Rect;
@@ -57,12 +58,17 @@ import com.google.firebase.storage.UploadTask;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+
+import javax.crypto.SecretKey;
 
 
 public class ChatDetailActivity extends AppCompatActivity {
@@ -71,6 +77,8 @@ public class ChatDetailActivity extends AppCompatActivity {
         super.onResume();
         checkBlockStatus(); // Recheck the block status when the activity resumes
     }
+    private static final String SENT_MESSAGES_PREFS = "SentMessagesPrefs";
+
     private String hisImage = "";
     private boolean isLoadingMoreMessages = false;
     private String earliestMessageTimestamp = null; // To track the earliest message
@@ -303,57 +311,89 @@ public class ChatDetailActivity extends AppCompatActivity {
         });
     }
 
+
+
     private void proceedToSendMessage() {
         String message = binding.messageEt.getText().toString().trim();
         if (!TextUtils.isEmpty(message)) {
             String timestamp = String.valueOf(System.currentTimeMillis());
 
-            // Temporary message to update UI
+            // Store plaintext message in SharedPreferences
+            SharedPreferences prefs = getSharedPreferences(SENT_MESSAGES_PREFS, MODE_PRIVATE);
+            prefs.edit().putString(timestamp, message).apply();
+
+
+            // Display the actual message in the UI for sender
             ModelChat tempMessage = new ModelChat(
-                    message, hisUid, myUid, timestamp, "text", false, null, "Sending");
+                    message, hisUid, myUid, timestamp, "text", false, null, "Sending", null
+            );
 
             chatList.add(tempMessage);
             adapterChat.notifyItemInserted(chatList.size() - 1);
             binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
-
             binding.messageEt.setText("");
 
-            DatabaseReference chatRef = FirebaseDatabase.getInstance().getReference("Chats");
+            DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(hisUid);
+            userRef.child("publicKey").get().addOnCompleteListener(task -> {
+                if (task.isSuccessful() && task.getResult().exists()) {
+                    String recipientPublicKeyStr = task.getResult().getValue(String.class);
+                    try {
+                        PublicKey recipientPublicKey = RSAUtils.stringToPublicKey(recipientPublicKeyStr);
+                        SecretKey aesKey = EncryptionUtils.generateAESKey();
 
-            HashMap<String, Object> messageMap = new HashMap<>();
-            messageMap.put("sender", myUid);
-            messageMap.put("receiver", hisUid);
-            messageMap.put("message", message);
-            messageMap.put("timestamp", timestamp);
-            messageMap.put("isSeen", false);
-            messageMap.put("type", "text");
-            messageMap.put("messageStatus", "Sending");
+                        String encryptedMessage = EncryptionUtils.encryptAES(message, aesKey);
+                        String encryptedAESKey = EncryptionUtils.encryptAESKeyWithRSA(aesKey, recipientPublicKey);
 
-            // Push message to Chats node
-            chatRef.push().setValue(messageMap).addOnCompleteListener(task -> {
-                if (task.isSuccessful()) {
-                    addToChatList(myUid, hisUid);
-                    addToChatList(hisUid, myUid);
+                        DatabaseReference chatRef = FirebaseDatabase.getInstance().getReference("Chats");
+                        String messageKey = chatRef.push().getKey();
 
-                    chatRef.orderByChild("timestamp").equalTo(timestamp).addListenerForSingleValueEvent(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(@NonNull DataSnapshot snapshot) {
-                            for (DataSnapshot ds : snapshot.getChildren()) {
-                                ds.getRef().child("messageStatus").setValue("Sent");
+                        HashMap<String, Object> messageMap = new HashMap<>();
+                        messageMap.put("sender", myUid);
+                        messageMap.put("receiver", hisUid);
+                        messageMap.put("message", encryptedMessage);
+                        messageMap.put("aesKey", encryptedAESKey);
+                        messageMap.put("timestamp", timestamp);
+                        messageMap.put("isSeen", false);
+                        messageMap.put("type", "text");
+                        messageMap.put("messageStatus", "Sending");
+
+                        assert messageKey != null;
+                        chatRef.child(messageKey).setValue(messageMap).addOnCompleteListener(task1 -> {
+                            if (task1.isSuccessful()) {
+                                addToChatList(myUid, hisUid);
+                                addToChatList(hisUid, myUid);
+
+                                // Update message status in Firebase to "Sent"
+                                chatRef.child(messageKey).child("messageStatus").setValue("Sent");
+
+                                // Update UI message status and ensure sender sees plaintext
+                                for (ModelChat chat : chatList) {
+                                    if (chat.getTimestamp().equals(timestamp)) {
+
+                                        chat.setMessageStatus("Sent");
+                                        break;
+                                    }
+                                }
+                                adapterChat.notifyDataSetChanged();
                             }
-                        }
+                        });
 
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError error) {}
-                    });
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Toast.makeText(this, "Encryption failed", Toast.LENGTH_SHORT).show();
+                    }
                 } else {
-                    Toast.makeText(ChatDetailActivity.this, "Message sending failed", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Recipient's public key not found", Toast.LENGTH_SHORT).show();
                 }
             });
+
         } else {
             Toast.makeText(this, "Cannot send an empty message", Toast.LENGTH_SHORT).show();
         }
     }
+
+
+
 
 
     // Adds the recipient ID to the Chatlist of the sender
@@ -361,6 +401,8 @@ public class ChatDetailActivity extends AppCompatActivity {
         DatabaseReference chatListRef = FirebaseDatabase.getInstance().getReference("Chatlist").child(senderId);
         chatListRef.child(receiverId).setValue(new ModelChatlist(receiverId));
     }
+
+
 
 
 
@@ -377,19 +419,37 @@ public class ChatDetailActivity extends AppCompatActivity {
                 chatList.clear();
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     ModelChat chat = ds.getValue(ModelChat.class);
-
+                    chat.setMessageId(ds.getKey()); // Set the unique ID
                     if (chat != null && chat.getSender() != null && chat.getReceiver() != null) {
                         boolean isChatRelevant = (chat.getReceiver().equals(myUid) && chat.getSender().equals(hisUid)) ||
                                 (chat.getReceiver().equals(hisUid) && chat.getSender().equals(myUid));
 
                         if (isChatRelevant) {
-                            chatList.add(chat);
-
-                            if (chat.getReceiver().equals(myUid) &&
-                                    chat.getMessageStatus() != null &&
-                                    !chat.getMessageStatus().equals("Seen")) {
-                                ds.getRef().child("messageStatus").setValue("Seen");
+                            if (chat.getSender().equals(myUid)) {
+                                // Retrieve plaintext from SharedPreferences
+                                SharedPreferences prefs = getSharedPreferences(SENT_MESSAGES_PREFS, MODE_PRIVATE);
+                                String plaintext = prefs.getString(chat.getTimestamp(), null);
+                                if (plaintext != null) {
+                                    chat.setMessage(plaintext);
+                                }
+                            } else if (chat.getReceiver().equals(myUid)) {
+                                try {
+                                    SharedPreferences prefs = getSharedPreferences("secure_prefs", MODE_PRIVATE);
+                                    String privateKeyStr = prefs.getString("privateKey", null);
+                                    if (privateKeyStr != null) {
+                                        PrivateKey privateKey = RSAUtils.stringToPrivateKey(privateKeyStr);
+                                        SecretKey aesKey = DecryptionUtils.decryptAESKeyWithRSA(chat.getAesKey(), privateKey);
+                                        String decryptedMessage = DecryptionUtils.decryptAES(chat.getMessage(), aesKey);
+                                        chat.setMessage(decryptedMessage);
+                                    } else {
+                                        chat.setMessage("[Encrypted Message]");
+                                    }
+                                } catch (Exception e) {
+                                    chat.setMessage("[Decryption Failed]");
+                                    e.printStackTrace();
+                                }
                             }
+                            chatList.add(chat);
                         }
                     }
                 }
@@ -412,64 +472,71 @@ public class ChatDetailActivity extends AppCompatActivity {
     }
 
 
-    private void loadOlderMessages() {
-        if (earliestMessageTimestamp == null || isLoadingMoreMessages) return;
 
-        isLoadingMoreMessages = true;
+
+
+    private void loadOlderMessages() {
+        if (earliestMessageTimestamp == null) return;
 
         DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference("Chats");
-        Query olderMessagesQuery = dbRef.orderByChild("timestamp")
-                .endAt(earliestMessageTimestamp, "timestamp")
-                .limitToLast(20);
+        Query olderChatQuery = dbRef.orderByChild("timestamp").endBefore(earliestMessageTimestamp).limitToLast(20);
 
-        olderMessagesQuery.addListenerForSingleValueEvent(new ValueEventListener() {
+        olderChatQuery.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 List<ModelChat> olderMessages = new ArrayList<>();
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     ModelChat chat = ds.getValue(ModelChat.class);
-
-                    // Ensure both sender and receiver are non-null before comparison
+                    chat.setMessageId(ds.getKey()); // Set the unique ID
                     if (chat != null && chat.getSender() != null && chat.getReceiver() != null) {
-                        if ((chat.getReceiver().equals(myUid) && chat.getSender().equals(hisUid)) ||
-                                (chat.getReceiver().equals(hisUid) && chat.getSender().equals(myUid))) {
+                        boolean isChatRelevant = (chat.getReceiver().equals(myUid) && chat.getSender().equals(hisUid)) ||
+                                (chat.getReceiver().equals(hisUid) && chat.getSender().equals(myUid));
+
+                        if (isChatRelevant) {
+                            if (chat.getSender().equals(myUid)) {
+                                // Retrieve plaintext from SharedPreferences
+                                SharedPreferences prefs = getSharedPreferences(SENT_MESSAGES_PREFS, MODE_PRIVATE);
+                                String plaintext = prefs.getString(chat.getTimestamp(), null);
+                                if (plaintext != null) {
+                                    chat.setMessage(plaintext);
+                                }
+
+                            } else if (chat.getReceiver().equals(myUid)) {
+                                try {
+                                    SharedPreferences prefs = getSharedPreferences("secure_prefs", MODE_PRIVATE);
+                                    String privateKeyStr = prefs.getString("privateKey", null);
+                                    if (privateKeyStr != null) {
+                                        PrivateKey privateKey = RSAUtils.stringToPrivateKey(privateKeyStr);
+                                        SecretKey aesKey = DecryptionUtils.decryptAESKeyWithRSA(chat.getAesKey(), privateKey);
+                                        String decryptedMessage = DecryptionUtils.decryptAES(chat.getMessage(), aesKey);
+                                        chat.setMessage(decryptedMessage);
+                                    } else {
+                                        chat.setMessage("[Encrypted Message]");
+                                    }
+                                } catch (Exception e) {
+                                    chat.setMessage("[Decryption Failed]");
+                                    e.printStackTrace();
+                                }
+                            }
                             olderMessages.add(chat);
                         }
-                    } else {
-                        // Log a warning if sender or receiver is null
-                        Log.w("LoadOlderMessages", "Skipping message with null sender/receiver. Key: " + ds.getKey());
                     }
                 }
-
+                chatList.addAll(0, olderMessages);
                 if (!olderMessages.isEmpty()) {
-                    // Exclude duplicate of the earliest message if present
-                    if (earliestMessageTimestamp.equals(olderMessages.get(olderMessages.size() - 1).getTimestamp())) {
-                        olderMessages.remove(olderMessages.size() - 1);
-                    }
-
-                    // Update earliest timestamp
-                    if (!olderMessages.isEmpty()) {
-                        earliestMessageTimestamp = olderMessages.get(0).getTimestamp();
-                    }
-
-                    int currentSize = chatList.size();
-                    chatList.addAll(0, olderMessages);
-                    adapterChat.notifyItemRangeInserted(0, olderMessages.size());
-
-                    // Maintain scroll position
-                    binding.chatRecyclerView.scrollToPosition(olderMessages.size());
+                    earliestMessageTimestamp = olderMessages.get(0).getTimestamp();
                 }
-
-                isLoadingMoreMessages = false;
+                adapterChat.notifyDataSetChanged();
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                isLoadingMoreMessages = false;
                 Toast.makeText(ChatDetailActivity.this, "Failed to load older messages.", Toast.LENGTH_SHORT).show();
             }
         });
     }
+
+
 
 
 
@@ -514,7 +581,7 @@ public class ChatDetailActivity extends AppCompatActivity {
         String fileNameAndPath = "ChatImages/" + timeStamp;
 
         // Declare tempChat inside the method
-        ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "image", false, null,"Sending");
+        ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "image", false, null,"Sending","");
         tempChat.setLocalImageUri(imageUri.toString());
         tempChat.setUploading(true);
         tempChat.setUploadProgress(0);
@@ -617,7 +684,7 @@ public class ChatDetailActivity extends AppCompatActivity {
         String filePath = "ChatVideos/" + timeStamp + ".mp4";
 
         // Add a temporary message to the UI with local video URI and uploading state
-        ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "video", false, null,"Sending");
+        ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "video", false, null,"Sending","");
         tempChat.setLocalImageUri(videoUri.toString()); // Set the local video URI
         tempChat.setUploading(true); // Set as uploading
         tempChat.setUploadProgress(0); // Initialize progress to 0

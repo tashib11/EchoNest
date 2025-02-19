@@ -73,13 +73,16 @@ public class PeopleFragment extends Fragment {
                     String coverPhoto = ds.child("coverPhoto").getValue(String.class);
                     String onlineStatus = ds.child("onlineStatus").getValue(String.class);
                     String profession = ds.child("profession").getValue(String.class);
-                    int followerCount = ds.child("followerCount").getValue(Integer.class);
+//                    int followerCount = ds.child("followerCount").getValue(Integer.class);
+//                    if (followerCount == null) {
+//                        followerCount = 0; // Default to 0 if it's null
+//                    }
 
                     // Exclude current user
                     if (userId != null && !userId.equals(fUser.getUid())) {
                         ModelUser modelUser = new ModelUser(
                                 coverPhoto, profilePhoto, email, null, null,
-                                userId, name, onlineStatus, profession, followerCount
+                                userId, name, onlineStatus, profession, 0,null
                         );
                         userList.add(modelUser);
                     }
