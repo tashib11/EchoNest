@@ -433,6 +433,8 @@ public class ChatDetailActivity extends AppCompatActivity {
                                     chat.setMessage(plaintext);
                                 }
                             } else if (chat.getReceiver().equals(myUid)) {
+                                dbRef.child(chat.getMessageId()).child("isSeen").setValue(true);
+                                dbRef.child(chat.getMessageId()).child("messageStatus").setValue("Seen");
                                 try {
                                     SharedPreferences prefs = getSharedPreferences("secure_prefs", MODE_PRIVATE);
                                     String privateKeyStr = prefs.getString("privateKey", null);

@@ -1,6 +1,8 @@
 package echonest.sociogram.connectus.Fragments;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -21,10 +23,13 @@ import android.widget.Toast;
 
 import echonest.sociogram.connectus.Adapters.AdapterChatlist;
 import echonest.sociogram.connectus.Adapters.AdapterUsers;
+import echonest.sociogram.connectus.DecryptionUtils;
 import echonest.sociogram.connectus.Models.ModelChat;
 import echonest.sociogram.connectus.Models.ModelChatlist;
 import echonest.sociogram.connectus.Models.ModelUser;
 import com.example.connectus.R;
+
+import echonest.sociogram.connectus.RSAUtils;
 import echonest.sociogram.connectus.SignInActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -36,9 +41,12 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
 
+import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
+import javax.crypto.SecretKey;
 
 
 public class ChatsFragment extends Fragment {
@@ -150,7 +158,20 @@ public class ChatsFragment extends Fragment {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 HashMap<String, String> lastMessageMap = new HashMap<>();
-                HashMap<String, Long> lastMessageTimestampMap = new HashMap<>(); // Map for timestamps
+                HashMap<String, Long> lastMessageTimestampMap = new HashMap<>();
+
+                // Retrieve the user's private key from SharedPreferences
+                SharedPreferences prefs = requireContext().getSharedPreferences("secure_prefs", Context.MODE_PRIVATE);
+                String privateKeyStr = prefs.getString("privateKey", null);
+                PrivateKey privateKey = null;
+
+                if (privateKeyStr != null) {
+                    try {
+                        privateKey = RSAUtils.stringToPrivateKey(privateKeyStr);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
 
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     ModelChat chat = ds.getValue(ModelChat.class);
@@ -158,12 +179,11 @@ public class ChatsFragment extends Fragment {
                         String sender = chat.getSender();
                         String receiver = chat.getReceiver();
 
-                        // Check for null values
                         if (sender != null && receiver != null) {
                             if (sender.equals(currentUser.getUid()) || receiver.equals(currentUser.getUid())) {
                                 String chatPartnerId = sender.equals(currentUser.getUid()) ? receiver : sender;
+                                String lastMessage = "[Encrypted Message]";
 
-                                String lastMessage;
                                 if (chat.getType() != null) {
                                     switch (chat.getType()) {
                                         case "image":
@@ -173,23 +193,30 @@ public class ChatsFragment extends Fragment {
                                             lastMessage = "Sent a video";
                                             break;
                                         default:
-                                            lastMessage = chat.getMessage(); // Default to text message
+                                            // Decrypt the message if possible
+                                            if (privateKey != null && chat.getAesKey() != null && chat.getMessage() != null) {
+                                                try {
+                                                    SecretKey aesKey = DecryptionUtils.decryptAESKeyWithRSA(chat.getAesKey(), privateKey);
+                                                    lastMessage = DecryptionUtils.decryptAES(chat.getMessage(), aesKey);
+                                                } catch (Exception e) {
+                                                    e.printStackTrace();
+                                                    lastMessage = "[You: sent Encrypted message]";
+                                                }
+                                            }
                                             break;
                                     }
-                                } else {
-                                    lastMessage = chat.getMessage(); // Handle null or unspecified type
                                 }
 
-                                long timestamp = Long.parseLong(chat.getTimestamp()); // Get the timestamp of the message
+                                long timestamp = Long.parseLong(chat.getTimestamp());
                                 lastMessageMap.put(chatPartnerId, lastMessage);
-                                lastMessageTimestampMap.put(chatPartnerId, timestamp); // Save timestamp
+                                lastMessageTimestampMap.put(chatPartnerId, timestamp);
                             }
                         }
                     }
                 }
 
                 adapterChatlist.setLastMessageMap(lastMessageMap);
-                adapterChatlist.setLastMessageTimestampMap(lastMessageTimestampMap); // Pass timestamps to adapter
+                adapterChatlist.setLastMessageTimestampMap(lastMessageTimestampMap);
             }
 
             @Override
@@ -198,6 +225,7 @@ public class ChatsFragment extends Fragment {
             }
         });
     }
+
 
 
 
