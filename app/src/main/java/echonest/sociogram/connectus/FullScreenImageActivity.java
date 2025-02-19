@@ -123,7 +123,7 @@ public class FullScreenImageActivity extends AppCompatActivity {
                     .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                     .setDestinationInExternalPublicDir(
                             Environment.DIRECTORY_PICTURES,
-                            "ChatApp/" + System.currentTimeMillis() + ".jpg"
+                            "EchoNest/" + System.currentTimeMillis() + ".jpg"
                     );
 
             DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
@@ -145,7 +145,7 @@ public class FullScreenImageActivity extends AppCompatActivity {
             public void onReceive(Context context, Intent intent) {
                 long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
                 if (id == downloadId) {
-                    showToast("Image saved to Pictures/ChatApp");
+                    showToast("Image saved to Pictures/EchoNest");
                 }
             }
         };
