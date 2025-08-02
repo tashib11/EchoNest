@@ -426,6 +426,79 @@ public class ChatDetailActivity extends AppCompatActivity {
 
                         if (isChatRelevant) {
                             if (chat.getSender().equals(myUid)) {
+                                // Plaintext for sender from SharedPreferences
+                                SharedPreferences prefs = getSharedPreferences(SENT_MESSAGES_PREFS, MODE_PRIVATE);
+                                String plaintext = prefs.getString(chat.getTimestamp(), null);
+                                if (plaintext != null) {
+                                    chat.setMessage(plaintext);
+                                }
+                            } else if (chat.getReceiver().equals(myUid)) {
+                                dbRef.child(chat.getMessageId()).child("isSeen").setValue(true);
+                                dbRef.child(chat.getMessageId()).child("messageStatus").setValue("Seen");
+
+                                if (chat.getType().equals("text")) {
+                                    // 🔐 Decrypt only text messages
+                                    try {
+                                        SharedPreferences prefs = getSharedPreferences("secure_prefs", MODE_PRIVATE);
+                                        String privateKeyStr = prefs.getString("privateKey", null);
+                                        if (privateKeyStr != null) {
+                                            PrivateKey privateKey = RSAUtils.stringToPrivateKey(privateKeyStr);
+                                            SecretKey aesKey = DecryptionUtils.decryptAESKeyWithRSA(chat.getAesKey(), privateKey);
+                                            String decryptedMessage = DecryptionUtils.decryptAES(chat.getMessage(), aesKey);
+                                            chat.setMessage(decryptedMessage);
+                                        } else {
+                                            chat.setMessage("[Encrypted Message]");
+                                        }
+                                    } catch (Exception e) {
+                                        chat.setMessage("[Decryption Failed]");
+                                        e.printStackTrace();
+                                    }
+                                } else if (chat.getType().equals("image") || chat.getType().equals("video")) {
+                                    // 🔓 Decrypt the URL for image/video
+                                    try {
+                                        SharedPreferences prefs = getSharedPreferences("secure_prefs", MODE_PRIVATE);
+                                        String privateKeyStr = prefs.getString("privateKey", null);
+                                        if (privateKeyStr != null) {
+                                            PrivateKey privateKey = RSAUtils.stringToPrivateKey(privateKeyStr);
+                                            SecretKey aesKey = DecryptionUtils.decryptAESKeyWithRSA(chat.getAesKey(), privateKey);
+                                            String decryptedUrl = DecryptionUtils.decryptAES(chat.getMessage(), aesKey);
+                                            chat.setMessage(decryptedUrl); // ✅ Replace encrypted URL with decrypted one
+                                        } else {
+                                            chat.setMessage(null); // 🔐 If no key, don’t load placeholder
+                                        }
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                        chat.setMessage(null); // Load error placeholder if needed
+                                    }
+                                }
+                            }
+
+
+                            chatList.add(chat);
+                        }
+                    }
+                }
+
+                if (!chatList.isEmpty()) {
+                    earliestMessageTimestamp = chatList.get(0).getTimestamp();
+                }
+
+                if (adapterChat != null) {
+                    adapterChat.notifyDataSetChanged();
+                    binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(ChatDetailActivity.this, "Failed to load messages.", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+
+/*
+   if (chat.getSender().equals(myUid)) {
                                 // Retrieve plaintext from SharedPreferences
                                 SharedPreferences prefs = getSharedPreferences(SENT_MESSAGES_PREFS, MODE_PRIVATE);
                                 String plaintext = prefs.getString(chat.getTimestamp(), null);
@@ -451,30 +524,7 @@ public class ChatDetailActivity extends AppCompatActivity {
                                     e.printStackTrace();
                                 }
                             }
-                            chatList.add(chat);
-                        }
-                    }
-                }
-
-                if (!chatList.isEmpty()) {
-                    earliestMessageTimestamp = chatList.get(0).getTimestamp();
-                }
-
-                if (adapterChat != null) {
-                    adapterChat.notifyDataSetChanged();
-                    binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(ChatDetailActivity.this, "Failed to load messages.", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-
-
+* */
 
 
     private void loadOlderMessages() {
@@ -504,22 +554,43 @@ public class ChatDetailActivity extends AppCompatActivity {
                                 }
 
                             } else if (chat.getReceiver().equals(myUid)) {
-                                try {
-                                    SharedPreferences prefs = getSharedPreferences("secure_prefs", MODE_PRIVATE);
-                                    String privateKeyStr = prefs.getString("privateKey", null);
-                                    if (privateKeyStr != null) {
-                                        PrivateKey privateKey = RSAUtils.stringToPrivateKey(privateKeyStr);
-                                        SecretKey aesKey = DecryptionUtils.decryptAESKeyWithRSA(chat.getAesKey(), privateKey);
-                                        String decryptedMessage = DecryptionUtils.decryptAES(chat.getMessage(), aesKey);
-                                        chat.setMessage(decryptedMessage);
-                                    } else {
-                                        chat.setMessage("[Encrypted Message]");
+                                if (chat.getType().equals("text")) {
+                                    // 🔐 Decrypt text messages
+                                    try {
+                                        SharedPreferences prefs = getSharedPreferences("secure_prefs", MODE_PRIVATE);
+                                        String privateKeyStr = prefs.getString("privateKey", null);
+                                        if (privateKeyStr != null) {
+                                            PrivateKey privateKey = RSAUtils.stringToPrivateKey(privateKeyStr);
+                                            SecretKey aesKey = DecryptionUtils.decryptAESKeyWithRSA(chat.getAesKey(), privateKey);
+                                            String decryptedMessage = DecryptionUtils.decryptAES(chat.getMessage(), aesKey);
+                                            chat.setMessage(decryptedMessage);
+                                        } else {
+                                            chat.setMessage("[Encrypted Message]");
+                                        }
+                                    } catch (Exception e) {
+                                        chat.setMessage("[Decryption Failed]");
+                                        e.printStackTrace();
                                     }
-                                } catch (Exception e) {
-                                    chat.setMessage("[Decryption Failed]");
-                                    e.printStackTrace();
+                                } else if (chat.getType().equals("image") || chat.getType().equals("video")) {
+                                    // 🔓 Decrypt the image/video URL
+                                    try {
+                                        SharedPreferences prefs = getSharedPreferences("secure_prefs", MODE_PRIVATE);
+                                        String privateKeyStr = prefs.getString("privateKey", null);
+                                        if (privateKeyStr != null) {
+                                            PrivateKey privateKey = RSAUtils.stringToPrivateKey(privateKeyStr);
+                                            SecretKey aesKey = DecryptionUtils.decryptAESKeyWithRSA(chat.getAesKey(), privateKey);
+                                            String decryptedUrl = DecryptionUtils.decryptAES(chat.getMessage(), aesKey);
+                                            chat.setMessage(decryptedUrl);
+                                        } else {
+                                            chat.setMessage(null);
+                                        }
+                                    } catch (Exception e) {
+                                        chat.setMessage(null);
+                                        e.printStackTrace();
+                                    }
                                 }
                             }
+
                             olderMessages.add(chat);
                         }
                     }
@@ -619,7 +690,32 @@ public class ChatDetailActivity extends AppCompatActivity {
                                 tempChat.setUploadProgress(100);
 
                                 runOnUiThread(() -> adapterChat.notifyItemChanged(chatList.indexOf(tempChat)));
-                                saveMessageToDatabase(uri.toString(), timeStamp);
+                                DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(hisUid);
+                                userRef.child("publicKey").get().addOnCompleteListener(task -> {
+                                    if (task.isSuccessful() && task.getResult().exists()) {
+                                        String recipientPublicKeyStr = task.getResult().getValue(String.class);
+                                        try {
+                                            PublicKey recipientPublicKey = RSAUtils.stringToPublicKey(recipientPublicKeyStr);
+                                            SecretKey aesKey = EncryptionUtils.generateAESKey();
+
+                                            String encryptedUrl = EncryptionUtils.encryptAES(uri.toString(), aesKey);
+                                            String encryptedAESKey = EncryptionUtils.encryptAESKeyWithRSA(aesKey, recipientPublicKey);
+
+                                            SharedPreferences prefs = getSharedPreferences(SENT_MESSAGES_PREFS, MODE_PRIVATE);
+                                            prefs.edit().putString(timeStamp, uri.toString()).apply(); // Save actual URL locally
+
+                                            saveMessageToDatabase(encryptedUrl, timeStamp, encryptedAESKey);
+
+
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                            Toast.makeText(this, "Encryption failed", Toast.LENGTH_SHORT).show();
+                                        }
+                                    } else {
+                                        Toast.makeText(this, "Recipient's public key not found", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+
                             });
                         })
                         .addOnFailureListener(e -> {
@@ -668,12 +764,13 @@ public class ChatDetailActivity extends AppCompatActivity {
         return inSampleSize;
     }
 
-    private void saveMessageToDatabase(String downloadUri, String timeStamp) {
+    private void saveMessageToDatabase(String encryptedUrl, String timeStamp, String encryptedAESKey) {
         DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
         HashMap<String, Object> hashMap = new HashMap<>();
         hashMap.put("sender", myUid);
         hashMap.put("receiver", hisUid);
-        hashMap.put("message", downloadUri);
+        hashMap.put("message", encryptedUrl);
+        hashMap.put("aesKey", encryptedAESKey);
         hashMap.put("timestamp", timeStamp);
         hashMap.put("type", "image");
         hashMap.put("isSeen", false);
@@ -681,75 +778,150 @@ public class ChatDetailActivity extends AppCompatActivity {
     }
 
 
-    private void sendVideoMessage(Uri videoUri) {
-        String timeStamp = String.valueOf(System.currentTimeMillis());
-        String filePath = "ChatVideos/" + timeStamp + ".mp4";
 
-        // Add a temporary message to the UI with local video URI and uploading state
-        ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "video", false, null,"Sending","");
-        tempChat.setLocalImageUri(videoUri.toString()); // Set the local video URI
-        tempChat.setUploading(true); // Set as uploading
-        tempChat.setUploadProgress(0); // Initialize progress to 0
+//    private void sendVideoMessage(Uri videoUri) {
+//        String timeStamp = String.valueOf(System.currentTimeMillis());
+//        String filePath = "ChatVideos/" + timeStamp + ".mp4";
+//
+//        // Add a temporary message to the UI with local video URI and uploading state
+//        ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "video", false, null,"Sending","");
+//        tempChat.setLocalImageUri(videoUri.toString()); // Set the local video URI
+//        tempChat.setUploading(true); // Set as uploading
+//        tempChat.setUploadProgress(0); // Initialize progress to 0
+//
+//        chatList.add(tempChat);
+//        adapterChat.notifyItemInserted(chatList.size() - 1);
+//        binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
+//
+//        // Firebase Storage reference
+//        StorageReference videoRef = FirebaseStorage.getInstance().getReference().child(filePath);
+//        UploadTask uploadTask = videoRef.putFile(videoUri);
+//
+//        uploadTask.addOnProgressListener(taskSnapshot -> {
+//            long bytesTransferred = taskSnapshot.getBytesTransferred();
+//            long totalByteCount = taskSnapshot.getTotalByteCount();
+//            int progress = (int) (100 * bytesTransferred / totalByteCount);
+//
+//            Log.d("UploadProgress", "Bytes transferred: " + bytesTransferred + "/" + totalByteCount + " (" + progress + "%)");
+//
+//            // Update progress in the temporary message
+//            tempChat.setUploadProgress(progress);
+//
+//            int position = chatList.indexOf(tempChat);
+//            if (position != -1) {
+//                adapterChat.notifyItemChanged(position);
+//            }
+//        }).addOnSuccessListener(taskSnapshot -> {
+//            videoRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
+//                // Update message with final URL
+//                tempChat.setMessage(downloadUri.toString());
+//                tempChat.setUploading(false); // Mark as uploaded
+//                tempChat.setUploadProgress(100); // Final progress
+//
+//                int position = chatList.indexOf(tempChat);
+//                if (position != -1) {
+//                    adapterChat.notifyItemChanged(position);
+//                }
+//
+//                // Save to Firebase Realtime Database
+//                sendVideoMessageToDatabase(downloadUri.toString());
+//            });
+//        }).addOnFailureListener(e -> {
+//            // Remove the message on failure
+//            chatList.remove(tempChat);
+//            adapterChat.notifyDataSetChanged();
+//            Toast.makeText(this, "Video upload failed.", Toast.LENGTH_SHORT).show();
+//        });
+//    }
 
-        chatList.add(tempChat);
-        adapterChat.notifyItemInserted(chatList.size() - 1);
-        binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
 
-        // Firebase Storage reference
-        StorageReference videoRef = FirebaseStorage.getInstance().getReference().child(filePath);
-        UploadTask uploadTask = videoRef.putFile(videoUri);
+//    private void sendVideoMessageToDatabase(String videoUrl) {
+//        String timeStamp = String.valueOf(System.currentTimeMillis());
+//        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("Chats");
+//
+//        HashMap<String, Object> messageMap = new HashMap<>();
+//        messageMap.put("sender", myUid);
+//        messageMap.put("receiver", hisUid);
+//        messageMap.put("message", videoUrl);
+//        messageMap.put("timestamp", timeStamp);
+//        messageMap.put("type", "video");
+//        messageMap.put("isSeen", false);
+//
+//        databaseReference.push().setValue(messageMap);
+//    }
+private void sendVideoMessage(Uri videoUri) {
+    String timeStamp = String.valueOf(System.currentTimeMillis());
+    String filePath = "ChatVideos/" + timeStamp + ".mp4";
 
-        uploadTask.addOnProgressListener(taskSnapshot -> {
-            long bytesTransferred = taskSnapshot.getBytesTransferred();
-            long totalByteCount = taskSnapshot.getTotalByteCount();
-            int progress = (int) (100 * bytesTransferred / totalByteCount);
+    ModelChat tempChat = new ModelChat("loading", hisUid, myUid, timeStamp, "video", false, null,"Sending","");
+    tempChat.setLocalImageUri(videoUri.toString());
+    tempChat.setUploading(true);
+    tempChat.setUploadProgress(0);
 
-            Log.d("UploadProgress", "Bytes transferred: " + bytesTransferred + "/" + totalByteCount + " (" + progress + "%)");
+    chatList.add(tempChat);
+    adapterChat.notifyItemInserted(chatList.size() - 1);
+    binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
 
-            // Update progress in the temporary message
-            tempChat.setUploadProgress(progress);
+    StorageReference videoRef = FirebaseStorage.getInstance().getReference().child(filePath);
+    UploadTask uploadTask = videoRef.putFile(videoUri);
 
-            int position = chatList.indexOf(tempChat);
-            if (position != -1) {
-                adapterChat.notifyItemChanged(position);
-            }
-        }).addOnSuccessListener(taskSnapshot -> {
-            videoRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
-                // Update message with final URL
-                tempChat.setMessage(downloadUri.toString());
-                tempChat.setUploading(false); // Mark as uploaded
-                tempChat.setUploadProgress(100); // Final progress
+    uploadTask.addOnProgressListener(taskSnapshot -> {
+        int progress = (int) (100 * taskSnapshot.getBytesTransferred() / taskSnapshot.getTotalByteCount());
+        tempChat.setUploadProgress(progress);
+        adapterChat.notifyItemChanged(chatList.indexOf(tempChat));
+    }).addOnSuccessListener(taskSnapshot -> {
+        videoRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
+            tempChat.setMessage(downloadUri.toString());
+            tempChat.setUploading(false);
+            tempChat.setUploadProgress(100);
+            adapterChat.notifyItemChanged(chatList.indexOf(tempChat));
 
-                int position = chatList.indexOf(tempChat);
-                if (position != -1) {
-                    adapterChat.notifyItemChanged(position);
-                }
-
-                // Save to Firebase Realtime Database
-                sendVideoMessageToDatabase(downloadUri.toString());
-            });
-        }).addOnFailureListener(e -> {
-            // Remove the message on failure
-            chatList.remove(tempChat);
-            adapterChat.notifyDataSetChanged();
-            Toast.makeText(this, "Video upload failed.", Toast.LENGTH_SHORT).show();
+            // 🛡️ Encrypt and save video message
+            encryptAndSendVideo(downloadUri.toString(), timeStamp);
         });
-    }
-
-
-    private void sendVideoMessageToDatabase(String videoUrl) {
-        String timeStamp = String.valueOf(System.currentTimeMillis());
+    }).addOnFailureListener(e -> {
+        chatList.remove(tempChat);
+        adapterChat.notifyDataSetChanged();
+        Toast.makeText(this, "Video upload failed.", Toast.LENGTH_SHORT).show();
+    });
+}
+    private void encryptAndSendVideo(String videoUrl, String timeStamp) {
         DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("Chats");
 
-        HashMap<String, Object> messageMap = new HashMap<>();
-        messageMap.put("sender", myUid);
-        messageMap.put("receiver", hisUid);
-        messageMap.put("message", videoUrl);
-        messageMap.put("timestamp", timeStamp);
-        messageMap.put("type", "video");
-        messageMap.put("isSeen", false);
+        FirebaseDatabase.getInstance().getReference("Users").child(hisUid).child("publicKey")
+                .get().addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult().exists()) {
+                        String recipientPublicKeyStr = task.getResult().getValue(String.class);
+                        try {
+                            PublicKey recipientPublicKey = RSAUtils.stringToPublicKey(recipientPublicKeyStr);
+                            SecretKey aesKey = EncryptionUtils.generateAESKey();
 
-        databaseReference.push().setValue(messageMap);
+                            String encryptedUrl = EncryptionUtils.encryptAES(videoUrl, aesKey);
+                            String encryptedAESKey = EncryptionUtils.encryptAESKeyWithRSA(aesKey, recipientPublicKey);
+
+                            // Save original video URL locally for sender's view
+                            SharedPreferences prefs = getSharedPreferences(SENT_MESSAGES_PREFS, MODE_PRIVATE);
+                            prefs.edit().putString(timeStamp, videoUrl).apply();
+
+                            // 🔄 Save encrypted video message
+                            HashMap<String, Object> messageMap = new HashMap<>();
+                            messageMap.put("sender", myUid);
+                            messageMap.put("receiver", hisUid);
+                            messageMap.put("message", encryptedUrl);
+                            messageMap.put("aesKey", encryptedAESKey);
+                            messageMap.put("timestamp", timeStamp);
+                            messageMap.put("type", "video");
+                            messageMap.put("isSeen", false);
+
+                            databaseReference.push().setValue(messageMap);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            Toast.makeText(this, "Encryption failed.", Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        Toast.makeText(this, "Recipient's public key not found.", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
 

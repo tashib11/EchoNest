@@ -1,5 +1,7 @@
 package echonest.sociogram.connectus.Models;
 
+import android.graphics.Bitmap;
+
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
@@ -17,6 +19,7 @@ public class ModelChat {
     // Add this field for message status
     String messageStatus; // "Sending", "Sent", or "Seen"
 
+    transient Bitmap decryptedBitmap;
     // Default constructor
     public ModelChat() {
     }
@@ -35,6 +38,14 @@ public class ModelChat {
         this.uploadProgress = 0;
         this.messageStatus = messageStatus;
         this.aesKey = aesKey; // Initialize aesKey
+    }
+
+    public Bitmap getDecryptedBitmap() {
+        return decryptedBitmap;
+    }
+
+    public void setDecryptedBitmap(Bitmap bitmap) {
+        this.decryptedBitmap = bitmap;
     }
 
     // Getters and setters

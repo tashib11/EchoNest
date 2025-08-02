@@ -8,6 +8,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
 import android.view.WindowManager;
@@ -23,6 +24,9 @@ import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
+import android.graphics.drawable.Drawable;
+import androidx.core.content.ContextCompat;
+
 import com.google.firebase.database.FirebaseDatabase;
 public class MainActivity extends AppCompatActivity {
     private boolean isAppClosing = false; // Track if the app is being closed
@@ -34,6 +38,8 @@ public class MainActivity extends AppCompatActivity {
     FirebaseAuth auth;
     FirebaseUser currentUser;
     DatabaseReference userRef;
+    ActionBarDrawerToggle toggle;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,9 +79,12 @@ public class MainActivity extends AppCompatActivity {
         toolbar = findViewById(R.id.toolbar);
 
         setSupportActionBar(toolbar);
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, drawerLayout, toolbar, R.string.OpenDrawer, R.string.CloseDrawer);
+        toggle = new ActionBarDrawerToggle(this, drawerLayout, toolbar, R.string.OpenDrawer, R.string.CloseDrawer);
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
+        Drawable drawerArrow = toggle.getDrawerArrowDrawable();
+        ((androidx.appcompat.graphics.drawable.DrawerArrowDrawable) drawerArrow).setColor(ContextCompat.getColor(this, R.color.white));
+
         getSupportActionBar().setTitle("Chats");
 
         navigationView.setNavigationItemSelectedListener(item -> {
@@ -159,4 +168,8 @@ public class MainActivity extends AppCompatActivity {
             finishAffinity();
             finish();
         }
-    }}
+    }
+
+
+
+}

@@ -12,7 +12,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:id="@+id/toolbar"
-    android:background="#364146"
+    android:background="#49565B"
     />
     </com.google.android.material.appbar.AppBarLayout>
     <include layout="@layout/content_main" />

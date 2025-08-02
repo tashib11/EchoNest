@@ -224,6 +224,7 @@ public class AdapterChat extends RecyclerView.Adapter<AdapterChat.MyHolder> {
             intent.putExtra("image_url", imageUrl);
             context.startActivity(intent);
         });
+        Log.d("ChatAdapter", "Image URL: " + currentMessage.getMessage());
     }
 
     private void handleVideoMessage(MyHolder holder, ModelChat currentMessage) {
