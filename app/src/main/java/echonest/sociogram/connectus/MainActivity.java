@@ -121,9 +121,13 @@ public class MainActivity extends AppCompatActivity {
                 binding.viewPager.setCurrentItem(0);
                 getSupportActionBar().setTitle("Chats");
                 return true;
-            } else if (id == R.id.bpeople) {
+            }else if (id == R.id.bpeople) {
                 binding.viewPager.setCurrentItem(1);
                 getSupportActionBar().setTitle("People");
+                return true;
+            } else if (id == R.id.brequest) {
+                binding.viewPager.setCurrentItem(2);
+                getSupportActionBar().setTitle("Message Requests");
                 return true;
             }
             return false;

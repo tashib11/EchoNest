@@ -8,6 +8,7 @@ import androidx.fragment.app.FragmentPagerAdapter;
 
 import echonest.sociogram.connectus.Fragments.ChatsFragment;
 import echonest.sociogram.connectus.Fragments.PeopleFragment;
+import echonest.sociogram.connectus.Fragments.RequestFragment;
 
 public class FragmentsAdapter extends FragmentPagerAdapter {
     public FragmentsAdapter(@NonNull FragmentManager fm) {
@@ -24,13 +25,15 @@ public class FragmentsAdapter extends FragmentPagerAdapter {
 
             case 1 : return new PeopleFragment();
 
+            case 2: return new RequestFragment();
+
             default: return  new ChatsFragment();
         }
     }
 
     @Override
     public int getCount() {
-        return 2;
+        return 3;
     }
 
     @Nullable
@@ -44,6 +47,9 @@ public class FragmentsAdapter extends FragmentPagerAdapter {
 
         if(position==1) {
             title = "People";
+        }
+        if(position==2) {
+            title = "Requests";
         }
         return super.getPageTitle(position);
     }

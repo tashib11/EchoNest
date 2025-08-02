@@ -187,10 +187,10 @@ public class ChatsFragment extends Fragment {
                                 if (chat.getType() != null) {
                                     switch (chat.getType()) {
                                         case "image":
-                                            lastMessage = "Sent a photo";
+                                            lastMessage = "A photo";
                                             break;
                                         case "video":
-                                            lastMessage = "Sent a video";
+                                            lastMessage = "A video";
                                             break;
                                         default:
                                             // Decrypt the message if possible
@@ -200,7 +200,7 @@ public class ChatsFragment extends Fragment {
                                                     lastMessage = DecryptionUtils.decryptAES(chat.getMessage(), aesKey);
                                                 } catch (Exception e) {
                                                     e.printStackTrace();
-                                                    lastMessage = "[You: sent Encrypted message]";
+                                                    lastMessage = "[Encrypted message]";
                                                 }
                                             }
                                             break;

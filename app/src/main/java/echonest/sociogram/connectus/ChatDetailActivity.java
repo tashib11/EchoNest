@@ -313,84 +313,170 @@ public class ChatDetailActivity extends AppCompatActivity {
 
 
 
-    private void proceedToSendMessage() {
-        String message = binding.messageEt.getText().toString().trim();
-        if (!TextUtils.isEmpty(message)) {
-            String timestamp = String.valueOf(System.currentTimeMillis());
+//    private void proceedToSendMessage() {
+//        String message = binding.messageEt.getText().toString().trim();
+//        if (!TextUtils.isEmpty(message)) {
+//            String timestamp = String.valueOf(System.currentTimeMillis());
+//
+//            // Store plaintext message in SharedPreferences
+//            SharedPreferences prefs = getSharedPreferences(SENT_MESSAGES_PREFS, MODE_PRIVATE);
+//            prefs.edit().putString(timestamp, message).apply();
+//
+//
+//            // Display the actual message in the UI for sender
+//            ModelChat tempMessage = new ModelChat(
+//                    message, hisUid, myUid, timestamp, "text", false, null, "Sending", null
+//            );
+//
+//            chatList.add(tempMessage);
+//            adapterChat.notifyItemInserted(chatList.size() - 1);
+//            binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
+//            binding.messageEt.setText("");
+//
+//            DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(hisUid);
+//            userRef.child("publicKey").get().addOnCompleteListener(task -> {
+//                if (task.isSuccessful() && task.getResult().exists()) {
+//                    String recipientPublicKeyStr = task.getResult().getValue(String.class);
+//                    try {
+//                        PublicKey recipientPublicKey = RSAUtils.stringToPublicKey(recipientPublicKeyStr);
+//                        SecretKey aesKey = EncryptionUtils.generateAESKey();
+//
+//                        String encryptedMessage = EncryptionUtils.encryptAES(message, aesKey);
+//                        String encryptedAESKey = EncryptionUtils.encryptAESKeyWithRSA(aesKey, recipientPublicKey);
+//
+//                        DatabaseReference chatRef = FirebaseDatabase.getInstance().getReference("Chats");
+//                        String messageKey = chatRef.push().getKey();
+//
+//                        HashMap<String, Object> messageMap = new HashMap<>();
+//                        messageMap.put("sender", myUid);
+//                        messageMap.put("receiver", hisUid);
+//                        messageMap.put("message", encryptedMessage);
+//                        messageMap.put("aesKey", encryptedAESKey);
+//                        messageMap.put("timestamp", timestamp);
+//                        messageMap.put("isSeen", false);
+//                        messageMap.put("type", "text");
+//                        messageMap.put("messageStatus", "Sending");
+//
+//                        assert messageKey != null;
+//                        chatRef.child(messageKey).setValue(messageMap).addOnCompleteListener(task1 -> {
+//                            if (task1.isSuccessful()) {
+//                                addToChatList(myUid, hisUid);
+//                                addToChatList(hisUid, myUid);
+//
+//                                // Update message status in Firebase to "Sent"
+//                                chatRef.child(messageKey).child("messageStatus").setValue("Sent");
+//
+//                                // Update UI message status and ensure sender sees plaintext
+//                                for (ModelChat chat : chatList) {
+//                                    if (chat.getTimestamp().equals(timestamp)) {
+//
+//                                        chat.setMessageStatus("Sent");
+//                                        break;
+//                                    }
+//                                }
+//                                adapterChat.notifyDataSetChanged();
+//                            }
+//                        });
+//
+//                    } catch (Exception e) {
+//                        e.printStackTrace();
+//                        Toast.makeText(this, "Encryption failed", Toast.LENGTH_SHORT).show();
+//                    }
+//                } else {
+//                    Toast.makeText(this, "Recipient's public key not found", Toast.LENGTH_SHORT).show();
+//                }
+//            });
+//
+//        } else {
+//            Toast.makeText(this, "Cannot send an empty message", Toast.LENGTH_SHORT).show();
+//        }
+//    }
+private void proceedToSendMessage() {
+    String message = binding.messageEt.getText().toString().trim();
+    if (!TextUtils.isEmpty(message)) {
+        String timestamp = String.valueOf(System.currentTimeMillis());
 
-            // Store plaintext message in SharedPreferences
-            SharedPreferences prefs = getSharedPreferences(SENT_MESSAGES_PREFS, MODE_PRIVATE);
-            prefs.edit().putString(timestamp, message).apply();
+        // Store plaintext message in SharedPreferences
+        SharedPreferences prefs = getSharedPreferences(SENT_MESSAGES_PREFS, MODE_PRIVATE);
+        prefs.edit().putString(timestamp, message).apply();
 
+        // Show the message in UI immediately for sender
+        ModelChat tempMessage = new ModelChat(
+                message, hisUid, myUid, timestamp, "text", false, null, "Sending", null
+        );
+        chatList.add(tempMessage);
+        adapterChat.notifyItemInserted(chatList.size() - 1);
+        binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
+        binding.messageEt.setText("");
 
-            // Display the actual message in the UI for sender
-            ModelChat tempMessage = new ModelChat(
-                    message, hisUid, myUid, timestamp, "text", false, null, "Sending", null
-            );
+        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(hisUid);
+        userRef.child("publicKey").get().addOnCompleteListener(task -> {
+            if (task.isSuccessful() && task.getResult().exists()) {
+                String recipientPublicKeyStr = task.getResult().getValue(String.class);
+                try {
+                    PublicKey recipientPublicKey = RSAUtils.stringToPublicKey(recipientPublicKeyStr);
+                    SecretKey aesKey = EncryptionUtils.generateAESKey();
 
-            chatList.add(tempMessage);
-            adapterChat.notifyItemInserted(chatList.size() - 1);
-            binding.chatRecyclerView.scrollToPosition(chatList.size() - 1);
-            binding.messageEt.setText("");
+                    String encryptedMessage = EncryptionUtils.encryptAES(message, aesKey);
+                    String encryptedAESKey = EncryptionUtils.encryptAESKeyWithRSA(aesKey, recipientPublicKey);
 
-            DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(hisUid);
-            userRef.child("publicKey").get().addOnCompleteListener(task -> {
-                if (task.isSuccessful() && task.getResult().exists()) {
-                    String recipientPublicKeyStr = task.getResult().getValue(String.class);
-                    try {
-                        PublicKey recipientPublicKey = RSAUtils.stringToPublicKey(recipientPublicKeyStr);
-                        SecretKey aesKey = EncryptionUtils.generateAESKey();
+                    DatabaseReference chatRef = FirebaseDatabase.getInstance().getReference("Chats");
+                    String messageKey = chatRef.push().getKey();
 
-                        String encryptedMessage = EncryptionUtils.encryptAES(message, aesKey);
-                        String encryptedAESKey = EncryptionUtils.encryptAESKeyWithRSA(aesKey, recipientPublicKey);
+                    HashMap<String, Object> messageMap = new HashMap<>();
+                    messageMap.put("sender", myUid);
+                    messageMap.put("receiver", hisUid);
+                    messageMap.put("message", encryptedMessage);
+                    messageMap.put("aesKey", encryptedAESKey);
+                    messageMap.put("timestamp", timestamp);
+                    messageMap.put("isSeen", false);
+                    messageMap.put("type", "text");
+                    messageMap.put("messageStatus", "Sending");
 
-                        DatabaseReference chatRef = FirebaseDatabase.getInstance().getReference("Chats");
-                        String messageKey = chatRef.push().getKey();
+                    assert messageKey != null;
+                    chatRef.child(messageKey).setValue(messageMap).addOnCompleteListener(task1 -> {
+                        if (task1.isSuccessful()) {
+                            // ✅ Add to sender's chatlist
+                            addToChatList(myUid, hisUid);
 
-                        HashMap<String, Object> messageMap = new HashMap<>();
-                        messageMap.put("sender", myUid);
-                        messageMap.put("receiver", hisUid);
-                        messageMap.put("message", encryptedMessage);
-                        messageMap.put("aesKey", encryptedAESKey);
-                        messageMap.put("timestamp", timestamp);
-                        messageMap.put("isSeen", false);
-                        messageMap.put("type", "text");
-                        messageMap.put("messageStatus", "Sending");
-
-                        assert messageKey != null;
-                        chatRef.child(messageKey).setValue(messageMap).addOnCompleteListener(task1 -> {
-                            if (task1.isSuccessful()) {
-                                addToChatList(myUid, hisUid);
-                                addToChatList(hisUid, myUid);
-
-                                // Update message status in Firebase to "Sent"
-                                chatRef.child(messageKey).child("messageStatus").setValue("Sent");
-
-                                // Update UI message status and ensure sender sees plaintext
-                                for (ModelChat chat : chatList) {
-                                    if (chat.getTimestamp().equals(timestamp)) {
-
-                                        chat.setMessageStatus("Sent");
-                                        break;
-                                    }
+// ✅ Check if receiver has already accepted (i.e., you're in *their* chatlist)
+                            DatabaseReference chatListRef = FirebaseDatabase.getInstance().getReference("Chatlist").child(hisUid);
+                            chatListRef.child(myUid).get().addOnCompleteListener(checkTask -> {
+                                if (!checkTask.getResult().exists()) {
+                                    // Not accepted yet → send a request
+                                    DatabaseReference reqRef = FirebaseDatabase.getInstance().getReference("ChatRequests");
+                                    reqRef.child(hisUid).child(myUid).setValue("pending");
                                 }
-                                adapterChat.notifyDataSetChanged();
+                            });
+
+
+                            // ✅ Update message status to "Sent"
+                            chatRef.child(messageKey).child("messageStatus").setValue("Sent");
+
+                            // ✅ Update UI message status
+                            for (ModelChat chat : chatList) {
+                                if (chat.getTimestamp().equals(timestamp)) {
+                                    chat.setMessageStatus("Sent");
+                                    break;
+                                }
                             }
-                        });
+                            adapterChat.notifyDataSetChanged();
+                        }
+                    });
 
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        Toast.makeText(this, "Encryption failed", Toast.LENGTH_SHORT).show();
-                    }
-                } else {
-                    Toast.makeText(this, "Recipient's public key not found", Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Toast.makeText(this, "Encryption failed", Toast.LENGTH_SHORT).show();
                 }
-            });
+            } else {
+                Toast.makeText(this, "Recipient's public key not found", Toast.LENGTH_SHORT).show();
+            }
+        });
 
-        } else {
-            Toast.makeText(this, "Cannot send an empty message", Toast.LENGTH_SHORT).show();
-        }
+    } else {
+        Toast.makeText(this, "Cannot send an empty message", Toast.LENGTH_SHORT).show();
     }
+}
 
 
 
