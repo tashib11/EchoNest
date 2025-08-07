@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/back7"
+    android:background="@color/lightGrey"
     android:gravity="center"
     android:orientation="vertical"
     tools:context="echonest.sociogram.connectus.SignInActivity">
@@ -37,7 +37,7 @@
             android:hint="Email"
             android:inputType="textEmailAddress"
             android:padding="12dp"
-            android:backgroundTint="@color/black"
+            android:background="#ddd"
             android:textColor="@color/black"
             android:textColorHint="#505E64"
             android:textCursorDrawable="@android:color/black" />
@@ -60,6 +60,8 @@
                 android:hint="Password"
                 android:inputType="textPassword"
                 android:padding="12dp"
+                android:background="#ddd"
+
                 android:textColor="@color/black"
                 android:textColorHint="@color/bar"
                 android:textCursorDrawable="@android:color/black" />

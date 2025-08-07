@@ -18,16 +18,21 @@ import echonest.sociogram.connectus.Adapters.FragmentsAdapter;
 import com.example.connectus.R;
 import com.example.connectus.databinding.ActivityMainBinding;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationBarView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import android.graphics.drawable.Drawable;
 import androidx.core.content.ContextCompat;
 
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
 public class MainActivity extends AppCompatActivity {
     private boolean isAppClosing = false; // Track if the app is being closed
     DrawerLayout drawerLayout;
@@ -89,8 +94,11 @@ public class MainActivity extends AppCompatActivity {
 
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
+
+
             if (id == R.id.logout) {
                 if (currentUser != null) {
+//                    updateRequestBadge();
                     userRef.child("onlineStatus").setValue(String.valueOf(System.currentTimeMillis()))
                             .addOnCompleteListener(task -> {
                                 if (task.isSuccessful()) {
@@ -133,6 +141,36 @@ public class MainActivity extends AppCompatActivity {
             return false;
         });
     }
+
+//    private void updateRequestBadge() {
+//        if (currentUser == null) return;
+//
+//        DatabaseReference requestRef = FirebaseDatabase.getInstance()
+//                .getReference("ChatRequests")
+//                .child(currentUser.getUid());
+//
+//        requestRef.addValueEventListener(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(@NonNull DataSnapshot snapshot) {
+//                int count = (int) snapshot.getChildrenCount();
+//
+//                BadgeDrawable badge = bottomNavigationView.getOrCreateBadge(R.id.brequest);
+//                badge.setBackgroundColor(ContextCompat.getColor(MainActivity.this, R.color.red)); // optional styling
+//
+//                if (count > 0) {
+//                    badge.setVisible(true);
+//                    badge.setNumber(count);
+//                } else {
+//                    badge.clearNumber();
+//                    badge.setVisible(false);
+//                }
+//            }
+//
+//            @Override
+//            public void onCancelled(@NonNull DatabaseError error) {}
+//        });
+//    }
+
 
     @Override
     protected void onResume() {
