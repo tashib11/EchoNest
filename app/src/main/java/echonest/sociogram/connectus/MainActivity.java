@@ -116,8 +116,8 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(new Intent(MainActivity.this, SettingsActivity.class));
             } else if (id == R.id.deleteAccount) {
                 startActivity(new Intent(MainActivity.this, deleteAccountActivity.class));
-            } else if (id == R.id.news) {
-                startActivity(new Intent(MainActivity.this, newsActivity.class));
+            } else if (id == R.id.about) {
+                startActivity(new Intent(MainActivity.this, aboutActivity.class));
             }
             return true;
         });
