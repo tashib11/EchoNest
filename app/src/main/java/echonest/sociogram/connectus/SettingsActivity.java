@@ -61,7 +61,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        applyTheme(); // Apply dark mode based on preferences
+//        applyTheme(); // Apply dark mode based on preferences
         super.onCreate(savedInstanceState);
         setStatusBarColor(); // Set custom status bar color
 
@@ -74,11 +74,11 @@ public class SettingsActivity extends AppCompatActivity {
         setupListeners();
     }
 
-    private void applyTheme() {
-        SharedPreferences preferences = getSharedPreferences("AppSettings", MODE_PRIVATE);
-        boolean isDarkMode = preferences.getBoolean("DarkMode", true);
-        setTheme(isDarkMode ? R.style.DarkTheme : R.style.LightTheme);
-    }
+//    private void applyTheme() {
+//        SharedPreferences preferences = getSharedPreferences("AppSettings", MODE_PRIVATE);
+//        boolean isDarkMode = preferences.getBoolean("DarkMode", true);
+//        setTheme(isDarkMode ? R.style.DarkTheme : R.style.LightTheme);
+//    }
 
     private void setStatusBarColor() {
         if (Build.VERSION.SDK_INT >= 21) {
@@ -97,13 +97,13 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void setupUI() {
-        SharedPreferences preferences = getSharedPreferences("AppSettings", MODE_PRIVATE);
-        boolean isDarkMode = preferences.getBoolean("DarkMode", true);
+        binding.mainLayout.setBackgroundColor(ContextCompat.getColor(this, R.color.blacklight));
 
-        binding.mainLayout.setBackgroundColor(ContextCompat.getColor(this,
-                isDarkMode ? R.color.blacklight : R.color.white));
-        binding.darkModeSwitch.setChecked(isDarkMode);
-        binding.darkModeStatus.setText(isDarkMode ? "Enabled" : "Disabled");
+
+//        binding.mainLayout.setBackgroundColor(ContextCompat.getColor(this,
+//                isDarkMode ? R.color.blacklight : R.color.white));
+//        binding.darkModeSwitch.setChecked(isDarkMode);
+//        binding.darkModeStatus.setText(isDarkMode ? "Enabled" : "Disabled");
 
         if (currentUser != null) {
             binding.emailTv.setText(currentUser.getEmail());
@@ -121,6 +121,7 @@ public class SettingsActivity extends AppCompatActivity {
 
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     binding.nameTv.setText(ds.child("name").getValue(String.class));
+                    binding.professionTv.setText(ds.child("profession").getValue(String.class));
                     loadProfileImage(ds.child("profilePhoto").getValue(String.class));
                     loadCoverImage(ds.child("coverPhoto").getValue(String.class));
                 }
@@ -149,20 +150,20 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
-        binding.darkModeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            SharedPreferences.Editor editor = getSharedPreferences("AppSettings", MODE_PRIVATE).edit();
-            editor.putBoolean("DarkMode", isChecked).apply();
-            recreate(); // Restart activity to apply theme
-        });
+//        binding.darkModeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+//            SharedPreferences.Editor editor = getSharedPreferences("AppSettings", MODE_PRIVATE).edit();
+//            editor.putBoolean("DarkMode", isChecked).apply();
+//            recreate(); // Restart activity to apply theme
+//        });
 
         binding.fab.setOnClickListener(view -> showEditProfileDialog());
 
-        binding.aboutTxt.setOnClickListener(view ->
-                startActivity(new Intent(SettingsActivity.this, aboutActivity.class)));
+//        binding.aboutTxt.setOnClickListener(view ->
+//                startActivity(new Intent(SettingsActivity.this, aboutActivity.class)));
     }
 
     private void showEditProfileDialog() {
-        String[] options = {"Edit Profile Picture", "Edit Cover Photo", "Edit Name", "Change Password"};
+        String[] options = {"Edit Profile Picture", "Edit Cover Photo", "Edit Name", "Change Password", "Change Profession"};
         new AlertDialog.Builder(this)
                 .setTitle("Choose Action")
                 .setItems(options, (dialog, which) -> {
@@ -181,9 +182,14 @@ public class SettingsActivity extends AppCompatActivity {
                         case 3:
                             showChangePasswordDialog();
                             break;
+                        case 4:
+                            showProfessionUpdateDialog();
+                            break;
                     }
                 }).create().show();
     }
+
+
 
     private void pickImageFromGallery(String message) {
         progressDialog.setMessage(message);
@@ -240,7 +246,34 @@ public class SettingsActivity extends AppCompatActivity {
                 });
     }
 
+    private void showProfessionUpdateDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Update Profession");
 
+        // Inflate custom layout for input
+        LinearLayout layout = new LinearLayout(this);
+        layout.setPadding(20, 20, 20, 20);
+        layout.setOrientation(LinearLayout.VERTICAL);
+
+        EditText professionInput = new EditText(this);
+        professionInput.setHint("Enter new profession");
+        layout.addView(professionInput);
+
+        builder.setView(layout);
+
+        builder.setPositiveButton("Update", (dialog, which) -> {
+            String newProfession = professionInput.getText().toString().trim();
+            if (TextUtils.isEmpty(newProfession)) {
+                Toast.makeText(SettingsActivity.this, "Profession cannot be empty!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            updateProfession(newProfession);
+        });
+
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+        builder.create().show();
+    }
     private void showNameUpdateDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Update Name");
@@ -288,7 +321,23 @@ public class SettingsActivity extends AppCompatActivity {
                 });
     }
 
+    private void updateProfession(String newProfession) {
+        progressDialog.setMessage("Updating Profession");
+        progressDialog.show();
 
+        HashMap<String, Object> updates = new HashMap<>();
+        updates.put("profession", newProfession);
+
+        databaseReference.child(currentUser.getUid()).updateChildren(updates)
+                .addOnSuccessListener(unused -> {
+                    progressDialog.dismiss();
+                    Toast.makeText(SettingsActivity.this, "Profession updated successfully", Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+                    progressDialog.dismiss();
+                    Toast.makeText(SettingsActivity.this, "Failed to update profession: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+    }
     private void showChangePasswordDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Change Password");
@@ -347,7 +396,7 @@ public class SettingsActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> {
                     progressDialog.dismiss();
-                    Toast.makeText(SettingsActivity.this, "Reauthentication failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SettingsActivity.this, "Wrong Old password ", Toast.LENGTH_LONG).show();
                 });
     }
 
