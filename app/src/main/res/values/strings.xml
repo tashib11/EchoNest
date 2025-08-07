@@ -11,14 +11,8 @@
         and your account will be deleted permanently
     </string>
     <string name="Description">
-     ConnectUs app is a social bases app which is used to make
-        communication easy among the users. It makes the relation
-        more strong and brings all together to more close.
-        Whatever this app is in the develop stage, there is a
-        long journey to complete the whole application.
+    ConnectUs is a social platform that allows you to stay connected with friends and family in real-time. Engage through stories, messaging, and media sharing — all with secure and user-friendly features.
+</string>
 
-
-
-    </string>
     <string name="save">save</string>
 </resources>
